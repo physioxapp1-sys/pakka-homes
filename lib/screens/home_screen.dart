@@ -1,56 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'category_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _tabIndex = 0;
-
-  static const _tabs = ['Home', 'Services', 'Shop', 'Rentals'];
-  static const _tabIcons = [
-    Icons.home_rounded,
-    Icons.build_rounded,
-    Icons.storefront_rounded,
-    Icons.precision_manufacturing_rounded,
-  ];
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: _tabIndex == 0
-            ? const _HomeTab()
-            : Center(
-                child: Text(
-                  '${_tabs[_tabIndex]} — coming soon',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _tabIndex,
-        onTap: (index) => setState(() => _tabIndex = index),
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        items: List.generate(
-          _tabs.length,
-          (i) => BottomNavigationBarItem(
-            icon: Icon(_tabIcons[i]),
-            label: _tabs[i],
-          ),
-        ),
-      ),
+      body: SafeArea(child: _HomeTab()),
     );
   }
 }
@@ -258,61 +218,96 @@ class _ProblemBanner extends StatelessWidget {
 class _ServiceCardGrid extends StatelessWidget {
   const _ServiceCardGrid();
 
+  void _open(BuildContext context, _DashboardCard card) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryScreen(
+          title: card.title,
+          subtitle: card.subtitle,
+          icon: card.icon,
+          iconColor: card.iconColor,
+          items: [...card.columnA, ...card.columnB],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    const services = _DashboardCard(
+      icon: Icons.engineering_rounded,
+      iconColor: AppColors.accentOrange,
+      title: 'Services',
+      subtitle: 'Find a professional',
+      gradient: AppColors.servicesGradient,
+      columnA: ['Construction', 'Electrical', 'Cleaning', 'Mason', 'Appliance repair'],
+      columnB: ['Plumbing', 'Painting', 'Carpenter', 'Waterproofing', 'Interior'],
+    );
+    const shop = _DashboardCard(
+      icon: Icons.shopping_cart_rounded,
+      iconColor: Color(0xFF3E9142),
+      title: 'Shop',
+      subtitle: 'Materials & hardware',
+      gradient: AppColors.shopGradient,
+      columnA: ['Cement', 'Electrical', 'Sanitaryware', 'Tools'],
+      columnB: ['Steel', 'Paint', 'Hardware', 'Water tanks'],
+    );
+    const rentals = _DashboardCard(
+      icon: Icons.precision_manufacturing_rounded,
+      iconColor: Color(0xFF2E7BC4),
+      title: 'Rentals',
+      subtitle: 'Tools & equipment',
+      gradient: AppColors.rentalsGradient,
+      columnA: ['Scaffolding', 'Drilling machines', 'Concrete mixers', 'Construction equipment'],
+      columnB: ['Ladders', 'Cutting machines', 'Generators'],
+    );
+    const bookings = _DashboardCard(
+      icon: Icons.assignment_rounded,
+      iconColor: Color(0xFF7A5FC7),
+      title: 'Bookings',
+      subtitle: 'Track your work',
+      gradient: AppColors.bookingsGradient,
+      columnA: ['Upcoming services', 'Previous services', 'Invoices'],
+      columnB: ['Active jobs', 'Orders', 'Warranty'],
+    );
+
     return Column(
-      children: const [
+      children: [
         Row(
           children: [
             Expanded(
-              child: _DashboardCard(
-                icon: Icons.engineering_rounded,
-                iconColor: AppColors.accentOrange,
-                title: 'Services',
-                subtitle: 'Find a professional',
-                gradient: AppColors.servicesGradient,
-                columnA: ['Construction', 'Electrical', 'Cleaning', 'Mason', 'Appliance repair'],
-                columnB: ['Plumbing', 'Painting', 'Carpenter', 'Waterproofing', 'Interior'],
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _open(context, services),
+                child: services,
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
-              child: _DashboardCard(
-                icon: Icons.shopping_cart_rounded,
-                iconColor: Color(0xFF3E9142),
-                title: 'Shop',
-                subtitle: 'Materials & hardware',
-                gradient: AppColors.shopGradient,
-                columnA: ['Cement', 'Electrical', 'Sanitaryware', 'Tools'],
-                columnB: ['Steel', 'Paint', 'Hardware', 'Water tanks'],
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _open(context, shop),
+                child: shop,
               ),
             ),
           ],
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: _DashboardCard(
-                icon: Icons.precision_manufacturing_rounded,
-                iconColor: Color(0xFF2E7BC4),
-                title: 'Rentals',
-                subtitle: 'Tools & equipment',
-                gradient: AppColors.rentalsGradient,
-                columnA: ['Scaffolding', 'Drilling machines', 'Concrete mixers', 'Construction equipment'],
-                columnB: ['Ladders', 'Cutting machines', 'Generators'],
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _open(context, rentals),
+                child: rentals,
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
-              child: _DashboardCard(
-                icon: Icons.assignment_rounded,
-                iconColor: Color(0xFF7A5FC7),
-                title: 'Bookings',
-                subtitle: 'Track your work',
-                gradient: AppColors.bookingsGradient,
-                columnA: ['Upcoming services', 'Previous services', 'Invoices'],
-                columnB: ['Active jobs', 'Orders', 'Warranty'],
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _open(context, bookings),
+                child: bookings,
               ),
             ),
           ],
@@ -343,52 +338,48 @@ class _DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: iconColor, size: 26),
+              const Spacer(),
+              const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textPrimary),
+            ],
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: iconColor, size: 26),
-                const Spacer(),
-                const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textPrimary),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _BulletColumn(items: columnA)),
-                Expanded(child: _BulletColumn(items: columnB)),
-              ],
-            ),
-          ],
-        ),
+          ),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _BulletColumn(items: columnA)),
+              Expanded(child: _BulletColumn(items: columnB)),
+            ],
+          ),
+        ],
       ),
     );
   }
