@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'screens/home_screen.dart';
+import 'theme/app_colors.dart';
+
 void main() {
   runApp(const PakkaHomesApp());
 }
@@ -11,25 +14,14 @@ class PakkaHomesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pakka Homes',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF0A6EBD),
+        colorSchemeSeed: AppColors.primary,
+        scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
-      home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pakka Homes')),
-      body: const Center(
-        child: Text('Welcome to Pakka Homes'),
-      ),
+      home: const HomeScreen(),
     );
   }
 }

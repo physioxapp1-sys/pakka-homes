@@ -18,3 +18,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/plumbing.png
+    - assets/electrical.png
+    - assets/cleaning.png
+    - assets/painting.png
+    - assets/waterproofing.png
+    - assets/repair.png
