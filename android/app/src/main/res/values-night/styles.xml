@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's Flutter theme (AppTheme.lightTheme in lib/theme/app_theme.dart)
+         doesn't adapt to system dark mode: it's always light. This native
+         splash matches that, so a phone in dark mode doesn't get a dark
+         flash immediately followed by a light app. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>
