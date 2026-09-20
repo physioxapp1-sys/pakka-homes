@@ -15,6 +15,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -25,3 +26,11 @@ flutter:
     - assets/painting.png
     - assets/waterproofing.png
     - assets/repair.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/main icon/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/main icon/app_icon_foreground.png"
+  min_sdk_android: 21
