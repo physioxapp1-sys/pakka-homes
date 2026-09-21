@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../data/service_subcategories.dart';
 import '../theme/app_colors.dart';
 import 'category_screen.dart';
 import 'subcategory_screen.dart';
@@ -224,17 +223,52 @@ class _ServiceCardGrid extends StatelessWidget {
     'Construction': (_) => const SubcategoryScreen(
           title: 'Construction',
           imageFolder: 'construction',
-          subcategories: kConstructionSubcategories,
+          itemCount: 12,
         ),
     'Electrical': (_) => const SubcategoryScreen(
           title: 'Electrical',
           imageFolder: 'electrical',
-          subcategories: kElectricalSubcategories,
+          itemCount: 12,
         ),
     'Cleaning': (_) => const SubcategoryScreen(
           title: 'Cleaning',
           imageFolder: 'cleaning',
-          subcategories: kCleaningSubcategories,
+          itemCount: 11,
+        ),
+    'Mason': (_) => const SubcategoryScreen(
+          title: 'Mason',
+          imageFolder: 'mason',
+          itemCount: 11,
+        ),
+    'Appliance repair': (_) => const SubcategoryScreen(
+          title: 'Appliance Repair',
+          imageFolder: 'appliance-repair',
+          itemCount: 12,
+        ),
+    'Plumbing': (_) => const SubcategoryScreen(
+          title: 'Plumbing',
+          imageFolder: 'plumbing',
+          itemCount: 12,
+        ),
+    'Painting': (_) => const SubcategoryScreen(
+          title: 'Painting',
+          imageFolder: 'painting',
+          itemCount: 10,
+        ),
+    'Carpenter': (_) => const SubcategoryScreen(
+          title: 'Carpenter',
+          imageFolder: 'carpenter',
+          itemCount: 11,
+        ),
+    'Waterproofing': (_) => const SubcategoryScreen(
+          title: 'Waterproofing',
+          imageFolder: 'waterproofing',
+          itemCount: 10,
+        ),
+    'Interior': (_) => const SubcategoryScreen(
+          title: 'Interior',
+          imageFolder: 'interior',
+          itemCount: 16,
         ),
   };
 
