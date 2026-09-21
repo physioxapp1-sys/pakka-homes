@@ -29,3 +29,10 @@ android/key.properties
 
 # macOS
 .DS_Store
+
+# Office lock files
+~$*
+
+# Python (helper scripts)
+__pycache__/
+*.pyc
