@@ -222,54 +222,77 @@ class _ServiceCardGrid extends StatelessWidget {
   static final Map<String, WidgetBuilder> _servicesItemRoutes = {
     'Construction': (_) => const SubcategoryScreen(
           title: 'Construction',
-          imageFolder: 'construction',
+          imagePathPrefix: 'assets/services/construction',
           itemCount: 12,
         ),
     'Electrical': (_) => const SubcategoryScreen(
           title: 'Electrical',
-          imageFolder: 'electrical',
+          imagePathPrefix: 'assets/services/electrical',
           itemCount: 12,
         ),
     'Cleaning': (_) => const SubcategoryScreen(
           title: 'Cleaning',
-          imageFolder: 'cleaning',
+          imagePathPrefix: 'assets/services/cleaning',
           itemCount: 11,
         ),
     'Mason': (_) => const SubcategoryScreen(
           title: 'Mason',
-          imageFolder: 'mason',
+          imagePathPrefix: 'assets/services/mason',
           itemCount: 11,
         ),
     'Appliance repair': (_) => const SubcategoryScreen(
           title: 'Appliance Repair',
-          imageFolder: 'appliance-repair',
+          imagePathPrefix: 'assets/services/appliance-repair',
           itemCount: 12,
         ),
     'Plumbing': (_) => const SubcategoryScreen(
           title: 'Plumbing',
-          imageFolder: 'plumbing',
+          imagePathPrefix: 'assets/services/plumbing',
           itemCount: 12,
         ),
     'Painting': (_) => const SubcategoryScreen(
           title: 'Painting',
-          imageFolder: 'painting',
+          imagePathPrefix: 'assets/services/painting',
           itemCount: 10,
         ),
     'Carpenter': (_) => const SubcategoryScreen(
           title: 'Carpenter',
-          imageFolder: 'carpenter',
+          imagePathPrefix: 'assets/services/carpenter',
           itemCount: 11,
         ),
     'Waterproofing': (_) => const SubcategoryScreen(
           title: 'Waterproofing',
-          imageFolder: 'waterproofing',
+          imagePathPrefix: 'assets/services/waterproofing',
           itemCount: 10,
         ),
     'Interior': (_) => const SubcategoryScreen(
           title: 'Interior',
-          imageFolder: 'interior',
+          imagePathPrefix: 'assets/services/interior',
           itemCount: 16,
         ),
+  };
+
+  static final Map<String, WidgetBuilder> _shopItemRoutes = {
+    'Cement': (_) => const SubcategoryScreen(
+          title: 'Cement',
+          imagePathPrefix: 'assets/shop/cement',
+          itemCount: 6,
+        ),
+    'Electrical': (_) => const SubcategoryScreen(
+          title: 'Electrical',
+          imagePathPrefix: 'assets/shop/electricals',
+          itemCount: 12,
+        ),
+    'Sanitaryware': (_) => const SubcategoryScreen(
+          title: 'Sanitaryware',
+          imagePathPrefix: 'assets/shop/sanitaryware',
+          itemCount: 15,
+        ),
+  };
+
+  static final Map<String, Map<String, WidgetBuilder>> _cardItemRoutes = {
+    'Services': _servicesItemRoutes,
+    'Shop': _shopItemRoutes,
   };
 
   void _open(BuildContext context, _DashboardCard card) {
@@ -281,7 +304,7 @@ class _ServiceCardGrid extends StatelessWidget {
           icon: card.icon,
           iconColor: card.iconColor,
           items: [...card.columnA, ...card.columnB],
-          itemRoutes: card.title == 'Services' ? _servicesItemRoutes : null,
+          itemRoutes: _cardItemRoutes[card.title],
         ),
       ),
     );

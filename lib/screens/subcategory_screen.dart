@@ -6,12 +6,15 @@ class SubcategoryScreen extends StatelessWidget {
   const SubcategoryScreen({
     super.key,
     required this.title,
-    required this.imageFolder,
+    required this.imagePathPrefix,
     required this.itemCount,
   });
 
   final String title;
-  final String imageFolder;
+
+  /// Base asset path for this category's images, e.g. 'assets/services/mason'.
+  /// Images are expected at '$imagePathPrefix/1.png', '.../2.png', etc.
+  final String imagePathPrefix;
   final int itemCount;
 
   @override
@@ -34,7 +37,7 @@ class SubcategoryScreen extends StatelessWidget {
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          final imagePath = 'assets/services/$imageFolder/${index + 1}.png';
+          final imagePath = '$imagePathPrefix/${index + 1}.png';
           return ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Material(

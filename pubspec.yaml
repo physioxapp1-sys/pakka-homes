@@ -36,6 +36,9 @@ flutter:
     - assets/services/carpenter/
     - assets/services/waterproofing/
     - assets/services/interior/
+    - assets/shop/cement/
+    - assets/shop/electricals/
+    - assets/shop/sanitaryware/
 
 flutter_launcher_icons:
   android: true
