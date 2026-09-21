@@ -30,7 +30,7 @@ class SubcategoryScreen extends StatelessWidget {
           crossAxisCount: 3,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 0.85,
+          childAspectRatio: 0.72,
         ),
         itemCount: subcategories.length,
         itemBuilder: (context, index) {
@@ -41,9 +41,30 @@ class SubcategoryScreen extends StatelessWidget {
               color: Colors.white,
               child: InkWell(
                 onTap: () {},
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Image.asset(imagePath, fit: BoxFit.contain),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Image.asset(imagePath, fit: BoxFit.contain),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+                      child: Text(
+                        subcategories[index],
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
