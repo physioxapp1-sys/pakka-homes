@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/service_subcategories.dart';
 import '../theme/app_colors.dart';
 import 'category_screen.dart';
+import 'subcategory_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -218,6 +220,24 @@ class _ProblemBanner extends StatelessWidget {
 class _ServiceCardGrid extends StatelessWidget {
   const _ServiceCardGrid();
 
+  static final Map<String, WidgetBuilder> _servicesItemRoutes = {
+    'Construction': (_) => const SubcategoryScreen(
+          title: 'Construction',
+          imageFolder: 'construction',
+          subcategories: kConstructionSubcategories,
+        ),
+    'Electrical': (_) => const SubcategoryScreen(
+          title: 'Electrical',
+          imageFolder: 'electrical',
+          subcategories: kElectricalSubcategories,
+        ),
+    'Cleaning': (_) => const SubcategoryScreen(
+          title: 'Cleaning',
+          imageFolder: 'cleaning',
+          subcategories: kCleaningSubcategories,
+        ),
+  };
+
   void _open(BuildContext context, _DashboardCard card) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -227,6 +247,7 @@ class _ServiceCardGrid extends StatelessWidget {
           icon: card.icon,
           iconColor: card.iconColor,
           items: [...card.columnA, ...card.columnB],
+          itemRoutes: card.title == 'Services' ? _servicesItemRoutes : null,
         ),
       ),
     );

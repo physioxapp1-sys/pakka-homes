@@ -26,6 +26,9 @@ flutter:
     - assets/painting.png
     - assets/waterproofing.png
     - assets/repair.png
+    - assets/services/construction/
+    - assets/services/electrical/
+    - assets/services/cleaning/
 
 flutter_launcher_icons:
   android: true

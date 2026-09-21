@@ -10,6 +10,7 @@ class CategoryScreen extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.items,
+    this.itemRoutes,
   });
 
   final String title;
@@ -17,6 +18,10 @@ class CategoryScreen extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final List<String> items;
+
+  /// Optional per-item destinations, keyed by the item's label. Items with
+  /// no matching entry show a "coming soon" message instead of navigating.
+  final Map<String, WidgetBuilder>? itemRoutes;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +50,16 @@ class CategoryScreen extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) => InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: () {},
+                onTap: () {
+                  final route = itemRoutes?[items[index]];
+                  if (route != null) {
+                    Navigator.of(context).push(MaterialPageRoute(builder: route));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Coming soon')),
+                    );
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
