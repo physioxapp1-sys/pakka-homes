@@ -39,6 +39,16 @@ flutter:
     - assets/shop/cement/
     - assets/shop/electricals/
     - assets/shop/sanitaryware/
+    - assets/shop/tools/
+    - assets/shop/steel/
+    - assets/shop/paint/
+    - assets/shop/hardware/
+    - assets/shop/watertanks/
+    - assets/shop/plumbing/
+    - assets/shop/tiles/
+    - assets/shop/roofing/
+    - assets/shop/construction-chemicals/
+    - assets/shop/safety/
 
 flutter_launcher_icons:
   android: true

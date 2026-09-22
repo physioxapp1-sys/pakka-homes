@@ -288,6 +288,56 @@ class _ServiceCardGrid extends StatelessWidget {
           imagePathPrefix: 'assets/shop/sanitaryware',
           itemCount: 15,
         ),
+    'Tools': (_) => const SubcategoryScreen(
+          title: 'Tools',
+          imagePathPrefix: 'assets/shop/tools',
+          itemCount: 12,
+        ),
+    'Steel': (_) => const SubcategoryScreen(
+          title: 'Steel',
+          imagePathPrefix: 'assets/shop/steel',
+          itemCount: 13,
+        ),
+    'Paint': (_) => const SubcategoryScreen(
+          title: 'Paint',
+          imagePathPrefix: 'assets/shop/paint',
+          itemCount: 12,
+        ),
+    'Hardware': (_) => const SubcategoryScreen(
+          title: 'Hardware',
+          imagePathPrefix: 'assets/shop/hardware',
+          itemCount: 18,
+        ),
+    'Water tanks': (_) => const SubcategoryScreen(
+          title: 'Water Tanks',
+          imagePathPrefix: 'assets/shop/watertanks',
+          itemCount: 10,
+        ),
+    'Plumbing Materials': (_) => const SubcategoryScreen(
+          title: 'Plumbing Materials',
+          imagePathPrefix: 'assets/shop/plumbing',
+          itemCount: 10,
+        ),
+    'Tiles': (_) => const SubcategoryScreen(
+          title: 'Tiles',
+          imagePathPrefix: 'assets/shop/tiles',
+          itemCount: 9,
+        ),
+    'Roofing': (_) => const SubcategoryScreen(
+          title: 'Roofing',
+          imagePathPrefix: 'assets/shop/roofing',
+          itemCount: 8,
+        ),
+    'Construction Chemicals': (_) => const SubcategoryScreen(
+          title: 'Construction Chemicals',
+          imagePathPrefix: 'assets/shop/construction-chemicals',
+          itemCount: 8,
+        ),
+    'Safety': (_) => const SubcategoryScreen(
+          title: 'Safety',
+          imagePathPrefix: 'assets/shop/safety',
+          itemCount: 7,
+        ),
   };
 
   static final Map<String, Map<String, WidgetBuilder>> _cardItemRoutes = {
@@ -303,7 +353,7 @@ class _ServiceCardGrid extends StatelessWidget {
           subtitle: card.subtitle,
           icon: card.icon,
           iconColor: card.iconColor,
-          items: [...card.columnA, ...card.columnB],
+          items: card.allItems ?? [...card.columnA, ...card.columnB],
           itemRoutes: _cardItemRoutes[card.title],
         ),
       ),
@@ -329,6 +379,21 @@ class _ServiceCardGrid extends StatelessWidget {
       gradient: AppColors.shopGradient,
       columnA: ['Cement', 'Electrical', 'Sanitaryware', 'Tools'],
       columnB: ['Steel', 'Paint', 'Hardware', 'Water tanks'],
+      allItems: [
+        'Cement',
+        'Electrical',
+        'Sanitaryware',
+        'Tools',
+        'Steel',
+        'Paint',
+        'Hardware',
+        'Water tanks',
+        'Plumbing Materials',
+        'Tiles',
+        'Roofing',
+        'Construction Chemicals',
+        'Safety',
+      ],
     );
     const rentals = _DashboardCard(
       icon: Icons.precision_manufacturing_rounded,
@@ -404,6 +469,7 @@ class _DashboardCard extends StatelessWidget {
     required this.gradient,
     required this.columnA,
     required this.columnB,
+    this.allItems,
   });
 
   final IconData icon;
@@ -413,6 +479,10 @@ class _DashboardCard extends StatelessWidget {
   final List<Color> gradient;
   final List<String> columnA;
   final List<String> columnB;
+
+  /// Full category list for the detail screen, when the card's two bullet
+  /// columns only show a preview. Falls back to columnA + columnB.
+  final List<String>? allItems;
 
   @override
   Widget build(BuildContext context) {
