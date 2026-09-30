@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/catalog_repository.dart';
+import '../data/local_catalog.dart';
 import '../theme/app_colors.dart';
 import 'category_screen.dart';
 import 'subcategory_screen.dart';
@@ -219,130 +221,34 @@ class _ProblemBanner extends StatelessWidget {
 class _ServiceCardGrid extends StatelessWidget {
   const _ServiceCardGrid();
 
-  static final Map<String, WidgetBuilder> _servicesItemRoutes = {
-    'Construction': (_) => const SubcategoryScreen(
-          title: 'Construction',
-          imagePathPrefix: 'assets/services/construction',
-          itemCount: 12,
-        ),
-    'Electrical': (_) => const SubcategoryScreen(
-          title: 'Electrical',
-          imagePathPrefix: 'assets/services/electrical',
-          itemCount: 12,
-        ),
-    'Cleaning': (_) => const SubcategoryScreen(
-          title: 'Cleaning',
-          imagePathPrefix: 'assets/services/cleaning',
-          itemCount: 11,
-        ),
-    'Mason': (_) => const SubcategoryScreen(
-          title: 'Mason',
-          imagePathPrefix: 'assets/services/mason',
-          itemCount: 11,
-        ),
-    'Appliance repair': (_) => const SubcategoryScreen(
-          title: 'Appliance Repair',
-          imagePathPrefix: 'assets/services/appliance-repair',
-          itemCount: 12,
-        ),
-    'Plumbing': (_) => const SubcategoryScreen(
-          title: 'Plumbing',
-          imagePathPrefix: 'assets/services/plumbing',
-          itemCount: 12,
-        ),
-    'Painting': (_) => const SubcategoryScreen(
-          title: 'Painting',
-          imagePathPrefix: 'assets/services/painting',
-          itemCount: 10,
-        ),
-    'Carpenter': (_) => const SubcategoryScreen(
-          title: 'Carpenter',
-          imagePathPrefix: 'assets/services/carpenter',
-          itemCount: 11,
-        ),
-    'Waterproofing': (_) => const SubcategoryScreen(
-          title: 'Waterproofing',
-          imagePathPrefix: 'assets/services/waterproofing',
-          itemCount: 10,
-        ),
-    'Interior': (_) => const SubcategoryScreen(
-          title: 'Interior',
-          imagePathPrefix: 'assets/services/interior',
-          itemCount: 16,
-        ),
-  };
-
-  static final Map<String, WidgetBuilder> _shopItemRoutes = {
-    'Cement': (_) => const SubcategoryScreen(
-          title: 'Cement',
-          imagePathPrefix: 'assets/shop/cement',
-          itemCount: 6,
-        ),
-    'Electrical': (_) => const SubcategoryScreen(
-          title: 'Electrical',
-          imagePathPrefix: 'assets/shop/electricals',
-          itemCount: 12,
-        ),
-    'Sanitaryware': (_) => const SubcategoryScreen(
-          title: 'Sanitaryware',
-          imagePathPrefix: 'assets/shop/sanitaryware',
-          itemCount: 15,
-        ),
-    'Tools': (_) => const SubcategoryScreen(
-          title: 'Tools',
-          imagePathPrefix: 'assets/shop/tools',
-          itemCount: 12,
-        ),
-    'Steel': (_) => const SubcategoryScreen(
-          title: 'Steel',
-          imagePathPrefix: 'assets/shop/steel',
-          itemCount: 13,
-        ),
-    'Paint': (_) => const SubcategoryScreen(
-          title: 'Paint',
-          imagePathPrefix: 'assets/shop/paint',
-          itemCount: 12,
-        ),
-    'Hardware': (_) => const SubcategoryScreen(
-          title: 'Hardware',
-          imagePathPrefix: 'assets/shop/hardware',
-          itemCount: 18,
-        ),
-    'Water tanks': (_) => const SubcategoryScreen(
-          title: 'Water Tanks',
-          imagePathPrefix: 'assets/shop/watertanks',
-          itemCount: 10,
-        ),
-    'Plumbing Materials': (_) => const SubcategoryScreen(
-          title: 'Plumbing Materials',
-          imagePathPrefix: 'assets/shop/plumbing',
-          itemCount: 10,
-        ),
-    'Tiles': (_) => const SubcategoryScreen(
-          title: 'Tiles',
-          imagePathPrefix: 'assets/shop/tiles',
-          itemCount: 9,
-        ),
-    'Roofing': (_) => const SubcategoryScreen(
-          title: 'Roofing',
-          imagePathPrefix: 'assets/shop/roofing',
-          itemCount: 8,
-        ),
-    'Construction Chemicals': (_) => const SubcategoryScreen(
-          title: 'Construction Chemicals',
-          imagePathPrefix: 'assets/shop/construction-chemicals',
-          itemCount: 8,
-        ),
-    'Safety': (_) => const SubcategoryScreen(
-          title: 'Safety',
-          imagePathPrefix: 'assets/shop/safety',
-          itemCount: 7,
-        ),
-  };
+  static Map<String, WidgetBuilder> _routesFor(
+    List<LocalCategory> categories,
+    String vertical,
+    String assetRoot,
+  ) {
+    return {
+      for (final category in categories)
+        category.name: (_) => SubcategoryScreen(
+              title: category.name,
+              imagePathPrefix: category.assetPathPrefix(assetRoot),
+              itemCount: category.imageCount,
+              vertical: vertical,
+              categorySlug: category.slug,
+            ),
+    };
+  }
 
   static final Map<String, Map<String, WidgetBuilder>> _cardItemRoutes = {
-    'Services': _servicesItemRoutes,
-    'Shop': _shopItemRoutes,
+    'Services': _routesFor(
+      kServiceCategories,
+      CatalogRepository.serviceVertical,
+      'services',
+    ),
+    'Shop': _routesFor(
+      kShopCategories,
+      CatalogRepository.shopVertical,
+      'shop',
+    ),
   };
 
   void _open(BuildContext context, _DashboardCard card) {
@@ -368,7 +274,7 @@ class _ServiceCardGrid extends StatelessWidget {
       title: 'Services',
       subtitle: 'Find a professional',
       gradient: AppColors.servicesGradient,
-      columnA: ['Construction', 'Electrical', 'Cleaning', 'Mason', 'Appliance repair'],
+      columnA: ['Construction', 'Electrical', 'Cleaning', 'Mason', 'Appliance Repair'],
       columnB: ['Plumbing', 'Painting', 'Carpenter', 'Waterproofing', 'Interior'],
     );
     const shop = _DashboardCard(
@@ -378,7 +284,7 @@ class _ServiceCardGrid extends StatelessWidget {
       subtitle: 'Materials & hardware',
       gradient: AppColors.shopGradient,
       columnA: ['Cement', 'Electrical', 'Sanitaryware', 'Tools'],
-      columnB: ['Steel', 'Paint', 'Hardware', 'Water tanks'],
+      columnB: ['Steel', 'Paint', 'Hardware', 'Water Tanks'],
       allItems: [
         'Cement',
         'Electrical',
@@ -387,7 +293,7 @@ class _ServiceCardGrid extends StatelessWidget {
         'Steel',
         'Paint',
         'Hardware',
-        'Water tanks',
+        'Water Tanks',
         'Plumbing Materials',
         'Tiles',
         'Roofing',
