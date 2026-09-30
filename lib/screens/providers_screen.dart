@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/provider_models.dart';
 import '../data/provider_repository.dart';
 import '../theme/app_colors.dart';
+import 'booking_screen.dart';
 
 /// Who can do the job the customer just picked.
 class ProvidersScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class ProvidersScreen extends StatefulWidget {
     required this.categorySlug,
     required this.vertical,
     this.subcategoryName,
+    this.subcategorySlug,
   });
 
   final String categoryName;
@@ -20,6 +22,7 @@ class ProvidersScreen extends StatefulWidget {
 
   /// Only known once the catalog is imported; the list is by category either way.
   final String? subcategoryName;
+  final String? subcategorySlug;
 
   @override
   State<ProvidersScreen> createState() => _ProvidersScreenState();
@@ -64,6 +67,20 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
     }
   }
 
+  void _book(ServiceProvider provider) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BookingScreen(
+          title: widget.subcategoryName ?? widget.categoryName,
+          categorySlug: widget.categorySlug,
+          subcategorySlug: widget.subcategorySlug,
+          providerSlug: provider.slug,
+          providerName: provider.name,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +107,10 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: providers.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _ProviderCard(provider: providers[i]),
+      itemBuilder: (_, i) => _ProviderCard(
+        provider: providers[i],
+        onBook: () => _book(providers[i]),
+      ),
     );
   }
 }
@@ -119,9 +139,10 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ProviderCard extends StatelessWidget {
-  const _ProviderCard({required this.provider});
+  const _ProviderCard({required this.provider, required this.onBook});
 
   final ServiceProvider provider;
+  final VoidCallback onBook;
 
   @override
   Widget build(BuildContext context) {
@@ -234,9 +255,7 @@ class _ProviderCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               ElevatedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Booking ${provider.name} — coming soon')),
-                ),
+                onPressed: onBook,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,

@@ -70,6 +70,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
           categorySlug: widget.categorySlug,
           vertical: widget.vertical,
           subcategoryName: index < _remote.length ? _remote[index].name : null,
+          subcategorySlug: index < _remote.length ? _remote[index].slug : null,
         ),
       ),
     );
