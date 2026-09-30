@@ -13,6 +13,7 @@ class BookingScreen extends StatefulWidget {
     required this.title,
     this.categorySlug,
     this.subcategorySlug,
+    this.priceLabel,
     this.providerSlug,
     this.providerName,
   });
@@ -20,6 +21,13 @@ class BookingScreen extends StatefulWidget {
   final String title;
   final String? categorySlug;
   final String? subcategorySlug;
+
+  /// The server-formatted rate for this job, e.g. "NPR 600 per visit".
+  /// Null, or "On request", means it is priced after a visit.
+  final String? priceLabel;
+
+  /// Only set if a specific provider was requested. The normal flow leaves
+  /// these empty and lets dispatch assign someone.
   final String? providerSlug;
   final String? providerName;
 
@@ -200,7 +208,11 @@ class _BookingScreenState extends State<BookingScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _Summary(title: widget.title, providerName: widget.providerName),
+            _Summary(
+              title: widget.title,
+              providerName: widget.providerName,
+              priceLabel: widget.priceLabel,
+            ),
             const SizedBox(height: 12),
             if (!AuthScope.of(context).isSignedIn) ...[
               _SignInPrompt(onSignIn: _signIn),
@@ -339,10 +351,16 @@ class _SignInPrompt extends StatelessWidget {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.title, this.providerName});
+  const _Summary({required this.title, this.providerName, this.priceLabel});
 
   final String title;
   final String? providerName;
+  final String? priceLabel;
+
+  /// An empty rate and the server's "On request" mean the same thing: the
+  /// job gets priced once someone has seen it.
+  bool get _isQuoted =>
+      priceLabel == null || priceLabel!.trim().toLowerCase() == 'on request';
 
   @override
   Widget build(BuildContext context) {
@@ -356,25 +374,63 @@ class _Summary extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.assignment_turned_in_outlined, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
+          Row(
+            children: [
+              const Icon(Icons.assignment_turned_in_outlined, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      providerName == null
+                          ? 'Pakka Homes will send a verified professional'
+                          : 'with $providerName',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
                 ),
-                Text(
-                  providerName == null ? 'We will assign a professional' : 'with $providerName',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isQuoted ? Icons.request_quote_outlined : Icons.sell_outlined,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _isQuoted
+                        ? 'Priced after a site visit — no charge to book'
+                        : priceLabel!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),

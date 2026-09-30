@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
 import '../theme/app_colors.dart';
-import 'providers_screen.dart';
+import 'booking_screen.dart';
 
 class SubcategoryScreen extends StatefulWidget {
   const SubcategoryScreen({
@@ -62,15 +62,17 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
     }
   }
 
-  void _openProviders(int index) {
+  /// Straight to booking - the customer books Pakka Homes and we assign
+  /// someone. Picking an individual is deliberately not part of the flow.
+  void _book(int index) {
+    final remote = index < _remote.length ? _remote[index] : null;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProvidersScreen(
-          categoryName: widget.title,
+        builder: (_) => BookingScreen(
+          title: remote?.name ?? widget.title,
           categorySlug: widget.categorySlug,
-          vertical: widget.vertical,
-          subcategoryName: index < _remote.length ? _remote[index].name : null,
-          subcategorySlug: index < _remote.length ? _remote[index].slug : null,
+          subcategorySlug: remote?.slug,
+          priceLabel: remote?.displayRate,
         ),
       ),
     );
@@ -104,7 +106,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
             child: Material(
               color: Colors.white,
               child: InkWell(
-                onTap: () => _openProviders(index),
+                onTap: () => _book(index),
                 child: Column(
                   children: [
                     Expanded(

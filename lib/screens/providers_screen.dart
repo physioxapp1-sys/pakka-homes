@@ -6,6 +6,14 @@ import '../theme/app_colors.dart';
 import 'booking_screen.dart';
 
 /// Who can do the job the customer just picked.
+///
+/// NOT in the customer flow. Booking goes straight from a subcategory to the
+/// booking form, and dispatch assigns someone afterwards - we sell the job,
+/// not an introduction to a tradesperson.
+///
+/// Kept because that decision is worth being able to reverse: re-linking this
+/// from SubcategoryScreen restores "choose your pro". Doing so also needs
+/// /api/v1/providers/ opened up again, which is staff-only now.
 class ProvidersScreen extends StatefulWidget {
   const ProvidersScreen({
     super.key,
