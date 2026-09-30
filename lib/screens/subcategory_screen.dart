@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
 import '../theme/app_colors.dart';
+import 'providers_screen.dart';
 
 class SubcategoryScreen extends StatefulWidget {
   const SubcategoryScreen({
@@ -61,6 +62,19 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
     }
   }
 
+  void _openProviders(int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProvidersScreen(
+          categoryName: widget.title,
+          categorySlug: widget.categorySlug,
+          vertical: widget.vertical,
+          subcategoryName: index < _remote.length ? _remote[index].name : null,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,7 +103,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
             child: Material(
               color: Colors.white,
               child: InkWell(
-                onTap: () {},
+                onTap: () => _openProviders(index),
                 child: Column(
                   children: [
                     Expanded(
