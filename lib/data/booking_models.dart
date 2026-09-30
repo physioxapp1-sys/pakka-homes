@@ -64,6 +64,72 @@ class BookingConfirmation {
       );
 }
 
+/// A booking as the customer sees it back. Mirrors BookingSerializer.
+class CustomerBooking {
+  const CustomerBooking({
+    required this.id,
+    required this.reference,
+    required this.status,
+    required this.statusDisplay,
+    required this.contactName,
+    required this.address,
+    this.slotDisplay = '',
+    this.scheduledDate,
+    this.subcategoryName,
+    this.providerName,
+    this.quotedAmount,
+    this.finalAmount,
+    this.createdAt,
+  });
+
+  final int id;
+  final String reference;
+  final String status;
+  final String statusDisplay;
+  final String contactName;
+  final String address;
+  final String slotDisplay;
+  final DateTime? scheduledDate;
+
+  /// Null until the catalog link resolves; the job title falls back to this.
+  final String? subcategoryName;
+
+  /// Null until dispatch assigns someone.
+  final String? providerName;
+  final double? quotedAmount;
+  final double? finalAmount;
+  final DateTime? createdAt;
+
+  bool get isOpen => const {'pending', 'confirmed', 'in_progress'}.contains(status);
+
+  factory CustomerBooking.fromJson(Map<String, dynamic> json) => CustomerBooking(
+        id: json['id'] as int? ?? 0,
+        reference: json['reference'] as String? ?? '',
+        status: json['status'] as String? ?? 'pending',
+        statusDisplay: json['status_display'] as String? ?? 'Pending',
+        contactName: json['contact_name'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        slotDisplay: json['slot_display'] as String? ?? '',
+        scheduledDate: _toDate(json['scheduled_date']),
+        subcategoryName: json['subcategory_name'] as String?,
+        providerName: json['provider_name'] as String?,
+        quotedAmount: _toDouble(json['quoted_amount']),
+        finalAmount: _toDouble(json['final_amount']),
+        createdAt: _toDate(json['created_at']),
+      );
+
+  static DateTime? _toDate(dynamic value) =>
+      value is String ? DateTime.tryParse(value) : null;
+
+  // DRF renders DecimalField as a string.
+  static double? _toDouble(dynamic value) => switch (value) {
+        null => null,
+        num n => n.toDouble(),
+        String s => double.tryParse(s),
+        _ => null,
+      };
+}
+
 /// Time windows the backend accepts, paired with what to show the customer.
 const kBookingSlots = <(String, String)>[
   ('anytime', 'Anytime'),

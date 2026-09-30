@@ -6,6 +6,7 @@ import '../data/local_catalog.dart';
 import '../theme/app_colors.dart';
 import 'auth_screen.dart';
 import 'category_screen.dart';
+import 'my_bookings_screen.dart';
 import 'subcategory_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -302,6 +303,15 @@ class _ServiceCardGrid extends StatelessWidget {
   };
 
   void _open(BuildContext context, _DashboardCard card) {
+    // Bookings has no browsable catalog behind it - it goes to the customer's
+    // own bookings, not a list of things to pick from.
+    if (card.title == 'Bookings') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CategoryScreen(
