@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/auth_scope.dart';
 import '../data/catalog_repository.dart';
 import '../data/local_catalog.dart';
 import '../theme/app_colors.dart';
+import 'auth_screen.dart';
 import 'category_screen.dart';
 import 'subcategory_screen.dart';
 
@@ -120,12 +122,60 @@ class _HomeHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(width: 12),
-        const CircleAvatar(
-          radius: 18,
-          backgroundColor: AppColors.primary,
-          child: Icon(Icons.person, color: Colors.white, size: 20),
-        ),
+        const _AccountButton(),
       ],
+    );
+  }
+}
+
+/// Signed out it opens sign-in; signed in it offers sign-out. The app never
+/// requires an account to browse, so this is the only permanent entry point.
+class _AccountButton extends StatelessWidget {
+  const _AccountButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = AuthScope.of(context);
+
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: () async {
+        if (!auth.isSignedIn) {
+          await Navigator.of(context).push<bool>(
+            MaterialPageRoute(builder: (_) => AuthScreen(auth: auth)),
+          );
+          return;
+        }
+        final signOut = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(auth.user?.fullName.isNotEmpty == true
+                ? auth.user!.fullName
+                : auth.user?.phone ?? 'Signed in'),
+            content: const Text('Sign out of this device?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Sign out'),
+              ),
+            ],
+          ),
+        );
+        if (signOut == true) await auth.signOut();
+      },
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: AppColors.primary,
+        child: Icon(
+          auth.isSignedIn ? Icons.person : Icons.person_outline,
+          color: Colors.white,
+          size: 20,
+        ),
+      ),
     );
   }
 }

@@ -28,18 +28,19 @@ class ApiClient {
   final http.Client _client;
   final String baseUrl;
 
-  Future<dynamic> get(String path, {Map<String, String>? query}) =>
-      _send(() => _client.get(_uri(path, query), headers: _headers));
+  Future<dynamic> get(String path, {Map<String, String>? query, String? token}) =>
+      _send(() => _client.get(_uri(path, query), headers: _headers(token)));
 
-  Future<dynamic> post(String path, Map<String, dynamic> body) => _send(
-        () => _client.post(_uri(path), headers: _headers, body: jsonEncode(body)),
+  Future<dynamic> post(String path, Map<String, dynamic> body, {String? token}) => _send(
+        () => _client.post(_uri(path), headers: _headers(token), body: jsonEncode(body)),
       );
 
   void close() => _client.close();
 
-  Map<String, String> get _headers => const {
+  Map<String, String> _headers(String? token) => {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Token $token',
       };
 
   Uri _uri(String path, [Map<String, String>? query]) => Uri.parse('$baseUrl$path')

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
+import '../data/auth_scope.dart';
 import '../data/booking_models.dart';
 import '../data/booking_repository.dart';
 import '../theme/app_colors.dart';
+import 'auth_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({
@@ -44,12 +46,43 @@ class _BookingScreenState extends State<BookingScreen> {
   Map<String, List<String>> _serverErrors = const {};
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _prefillFromAccount();
+  }
+
+  @override
   void dispose() {
     for (final c in [_name, _phone, _address, _landmark, _notes]) {
       c.dispose();
     }
     _repository.dispose();
     super.dispose();
+  }
+
+  /// Saves a signed-in customer retyping what we already know. Never
+  /// overwrites something they have already typed.
+  void _prefillFromAccount() {
+    final user = AuthScope.of(context).user;
+    if (user == null) return;
+    if (_name.text.isEmpty && user.fullName.isNotEmpty) _name.text = user.fullName;
+    if (_phone.text.isEmpty && user.phone.isNotEmpty) _phone.text = user.phone;
+    if (_address.text.isEmpty && user.address.isNotEmpty) _address.text = user.address;
+  }
+
+  Future<void> _signIn() async {
+    final auth = AuthScope.of(context);
+    final signedIn = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AuthScreen(
+          auth: auth,
+          reason: 'Sign in to track this booking and see it in your Bookings.',
+        ),
+      ),
+    );
+    if (signedIn == true && mounted) {
+      setState(_prefillFromAccount);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -69,18 +102,21 @@ class _BookingScreenState extends State<BookingScreen> {
 
     setState(() => _submitting = true);
     try {
-      final confirmation = await _repository.create(BookingRequest(
-        contactName: _name.text,
-        contactPhone: _phone.text,
-        address: _address.text,
-        landmark: _landmark.text,
-        scheduledDate: _date,
-        slot: _slot,
-        notes: _notes.text,
-        categorySlug: widget.categorySlug,
-        subcategorySlug: widget.subcategorySlug,
-        providerSlug: widget.providerSlug,
-      ));
+      final confirmation = await _repository.create(
+        token: AuthScope.of(context).token,
+        BookingRequest(
+          contactName: _name.text,
+          contactPhone: _phone.text,
+          address: _address.text,
+          landmark: _landmark.text,
+          scheduledDate: _date,
+          slot: _slot,
+          notes: _notes.text,
+          categorySlug: widget.categorySlug,
+          subcategorySlug: widget.subcategorySlug,
+          providerSlug: widget.providerSlug,
+        ),
+      );
       if (mounted) _showConfirmation(confirmation);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -165,7 +201,12 @@ class _BookingScreenState extends State<BookingScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             _Summary(title: widget.title, providerName: widget.providerName),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            if (!AuthScope.of(context).isSignedIn) ...[
+              _SignInPrompt(onSignIn: _signIn),
+              const SizedBox(height: 12),
+            ],
+            const SizedBox(height: 6),
             _Field(
               controller: _name,
               label: 'Your name',
@@ -251,6 +292,47 @@ class _BookingScreenState extends State<BookingScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The soft gate: an offer, not a wall. Booking as a guest works, and the
+/// account can be created afterwards - signing up claims bookings made on
+/// the same number.
+class _SignInPrompt extends StatelessWidget {
+  const _SignInPrompt({required this.onSignIn});
+
+  final VoidCallback onSignIn;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.bookmark_added_outlined, size: 20, color: AppColors.primary),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Sign in to track this booking — or just carry on as a guest.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: onSignIn,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: const Text('Sign in', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }

@@ -6,8 +6,10 @@ class BookingRepository {
 
   final ApiClient _api;
 
-  Future<BookingConfirmation> create(BookingRequest request) async {
-    final body = await _api.post('/bookings/', request.toJson());
+  /// [token] attaches the booking to a signed-in customer. Guests book
+  /// without one; the backend accepts both.
+  Future<BookingConfirmation> create(BookingRequest request, {String? token}) async {
+    final body = await _api.post('/bookings/', request.toJson(), token: token);
     return BookingConfirmation.fromJson(body as Map<String, dynamic>);
   }
 
