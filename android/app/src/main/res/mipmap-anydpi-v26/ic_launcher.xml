@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
+    <!-- The artwork is a lit sconce on a wall, so the wall has to reach the
+         edges of the layer or a mask would cut into it. That means the whole
+         image lives in the background layer, with the house inside the 66%
+         safe zone, and the foreground is empty. -->
+    <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
