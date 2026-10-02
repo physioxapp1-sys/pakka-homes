@@ -46,6 +46,33 @@ const _categoryIcons = <String, IconData>{
   'safety': Icons.health_and_safety,
 };
 
+/// Artwork for a category tile, keyed '<root>/<slug>' because 'electrical' and
+/// 'paint' exist under both services and shop with different pictures.
+///
+/// Each image carries its own label and its own pale background, so the colour
+/// here is that background sampled from the file's border. The tile paints it
+/// behind a BoxFit.contain image: letterboxing becomes invisible, and nothing
+/// crops the baked-in label the way BoxFit.cover would.
+///
+/// Partial by design - a slug with no entry falls back to the icon tile.
+const _tileArt = <String, (Color, String)>{
+  'services/carpenter': (Color(0xFFF2DEC5), 'assets/home/services/carpenter.png'),
+  'services/cleaning': (Color(0xFFC2EDE3), 'assets/home/services/cleaning.png'),
+  'services/construction': (Color(0xFFD5D1C6), 'assets/home/services/construction.png'),
+  'services/electrical': (Color(0xFFDFEED7), 'assets/home/services/electrical.png'),
+  'services/painting': (Color(0xFFC6E5E7), 'assets/home/services/painting.png'),
+  'services/plumbing': (Color(0xFFE3F0F9), 'assets/home/services/plumbing.png'),
+  'shop/cement': (Color(0xFFEBE0CE), 'assets/home/shop/cement.png'),
+  'shop/electrical': (Color(0xFFC8E5C7), 'assets/home/shop/electrical.png'),
+  'shop/hardware': (Color(0xFFE4BF95), 'assets/home/shop/hardware.png'),
+  'shop/paint': (Color(0xFFC3DFEB), 'assets/home/shop/paint.png'),
+  'rentals/concrete-mixer': (Color(0xFFCFE1F9), 'assets/home/rentals/concrete-mixer.png'),
+  'rentals/excavator': (Color(0xFFD0E2FA), 'assets/home/rentals/excavator.png'),
+  'rentals/generator': (Color(0xFFD0E2FA), 'assets/home/rentals/generator.png'),
+  'rentals/jackhammer': (Color(0xFFCFE1F9), 'assets/home/rentals/jackhammer.png'),
+  'rentals/scaffolding': (Color(0xFFCFE1F9), 'assets/home/rentals/scaffolding.png'),
+};
+
 const _tilePalette = <(Color, Color)>[
   (Color(0xFFE4F0FF), Color(0xFF1976D2)),
   (Color(0xFFFFF1D2), Color(0xFFF59E0B)),
@@ -210,7 +237,8 @@ class _HomeTab extends StatelessWidget {
                 itemBuilder: (context, i) {
                   final category = kServiceCategories[i];
                   final (bg, fg) = _coloursFor(i);
-                  return _ServiceTile(
+                  return _CategoryTile(
+                    artKey: 'services/${category.slug}',
                     title: category.name,
                     icon: _iconFor(category.slug),
                     background: bg,
@@ -235,6 +263,7 @@ class _HomeTab extends StatelessWidget {
               items: [
                 for (final category in kShopCategories)
                   _SectionItem(
+                    artKey: 'shop/${category.slug}',
                     title: category.name,
                     icon: _iconFor(category.slug),
                     onTap: () => _openCategory(
@@ -253,15 +282,18 @@ class _HomeTab extends StatelessWidget {
               background: AppColors.lightPurple,
               iconColor: AppColors.indigo,
               onHeaderTap: () => onSeeAll(3),
+              // These five are exactly the rental artwork that exists, so the
+              // row is all pictures and no fallbacks.
               items: [
-                for (final (title, icon) in const [
-                  ('Scaffolding', Icons.grid_view_rounded),
-                  ('Generator', Icons.bolt),
-                  ('Water Tank', Icons.water_drop),
-                  ('Jackhammer', Icons.hardware),
-                  ('Excavator', Icons.agriculture),
+                for (final (slug, title, icon) in const [
+                  ('scaffolding', 'Scaffolding', Icons.grid_view_rounded),
+                  ('generator', 'Generator', Icons.bolt),
+                  ('concrete-mixer', 'Concrete Mixer', Icons.rotate_right),
+                  ('jackhammer', 'Jackhammer', Icons.hardware),
+                  ('excavator', 'Excavator', Icons.agriculture),
                 ])
                   _SectionItem(
+                    artKey: 'rentals/$slug',
                     title: title,
                     icon: icon,
                     onTap: () => onSeeAll(3),
@@ -284,7 +316,12 @@ class _HomeTab extends StatelessWidget {
                   ('My Bookings', Icons.event_available),
                   ('Track Booking', Icons.local_shipping),
                 ])
-                  _SectionItem(title: title, icon: icon, onTap: () => onSeeAll(4)),
+                  _SectionItem(
+                    artKey: 'bookings/${title.toLowerCase()}',
+                    title: title,
+                    icon: icon,
+                    onTap: () => onSeeAll(4),
+                  ),
               ],
             ),
           ),
@@ -634,49 +671,74 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({
+/// A category tile. Renders the supplied artwork when there is some for this
+/// slug, and an icon with a text label when there is not.
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.artKey,
     required this.title,
     required this.icon,
     required this.background,
     required this.iconColor,
     required this.onTap,
+    this.width = 108,
+    this.radius = 18,
   });
 
+  final String artKey;
   final String title;
   final IconData icon;
   final Color background;
   final Color iconColor;
   final VoidCallback onTap;
+  final double width;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
+    final art = _tileArt[artKey];
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 108,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 6),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 35),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: AppColors.navy,
-              ),
-            ),
-          ],
+      child: SizedBox(
+        width: width,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: art == null
+              ? Container(
+                  color: background,
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 6),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, color: iconColor, size: 35),
+                      const SizedBox(height: 12),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Container(
+                  color: art.$1,
+                  // The label is part of the picture, so nothing is drawn over
+                  // it and contain keeps it from being cropped.
+                  child: Image.asset(
+                    art.$2,
+                    fit: BoxFit.contain,
+                    // A missing file should cost one tile, not the whole row.
+                    errorBuilder: (_, __, ___) =>
+                        Icon(icon, color: iconColor, size: 35),
+                  ),
+                ),
         ),
       ),
     );
@@ -684,8 +746,14 @@ class _ServiceTile extends StatelessWidget {
 }
 
 class _SectionItem {
-  const _SectionItem({required this.title, required this.icon, required this.onTap});
+  const _SectionItem({
+    required this.artKey,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
 
+  final String artKey;
   final String title;
   final IconData icon;
   final VoidCallback onTap;
@@ -772,6 +840,23 @@ class _CategorySection extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final item = items[index];
+                  final art = _tileArt[item.artKey];
+
+                  // With artwork the picture is the whole card. Without it,
+                  // the white card with a circled icon from the design.
+                  if (art != null) {
+                    return _CategoryTile(
+                      artKey: item.artKey,
+                      title: item.title,
+                      icon: item.icon,
+                      background: background,
+                      iconColor: iconColor,
+                      onTap: item.onTap,
+                      width: 120,
+                      radius: 15,
+                    );
+                  }
+
                   return GestureDetector(
                     onTap: item.onTap,
                     child: Container(
