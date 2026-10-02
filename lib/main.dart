@@ -27,7 +27,7 @@ class PakkaHomesApp extends StatelessWidget {
         title: 'Pakka Homes',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorSchemeSeed: AppColors.primary,
+          colorSchemeSeed: AppColors.orange,
           scaffoldBackgroundColor: AppColors.background,
           useMaterial3: true,
           fontFamily: 'Roboto',

@@ -10,254 +10,96 @@ import 'category_screen.dart';
 import 'my_bookings_screen.dart';
 import 'subcategory_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Presentation for catalog entries.
+//
+// The catalog itself carries no artwork for a category tile, so the icon and
+// tile colour live here. Anything unmapped still renders - it falls back to a
+// generic icon and takes a colour from the rotation, so adding a category to
+// the spreadsheet never leaves a blank tile.
+// ---------------------------------------------------------------------------
+
+const _categoryIcons = <String, IconData>{
+  // services
+  'construction': Icons.engineering,
+  'electrical': Icons.electric_bolt,
+  'cleaning': Icons.cleaning_services,
+  'mason': Icons.foundation,
+  'appliance-repair': Icons.home_repair_service,
+  'plumbing': Icons.plumbing,
+  'painting': Icons.format_paint,
+  'carpenter': Icons.handyman,
+  'waterproofing': Icons.water_drop,
+  'interior': Icons.weekend,
+  // shop
+  'cement': Icons.inventory_2,
+  'sanitary-ware': Icons.bathtub,
+  'tools': Icons.build,
+  'steel': Icons.straighten,
+  'paint': Icons.imagesearch_roller,
+  'hardware': Icons.hardware,
+  'water-tanks': Icons.water,
+  'plumbing-materials': Icons.plumbing,
+  'tiles': Icons.grid_view,
+  'roofing': Icons.roofing,
+  'construction-chemicals': Icons.science,
+  'safety': Icons.health_and_safety,
+};
+
+const _tilePalette = <(Color, Color)>[
+  (Color(0xFFE4F0FF), Color(0xFF1976D2)),
+  (Color(0xFFFFF1D2), Color(0xFFF59E0B)),
+  (Color(0xFFE2F7EC), Color(0xFF159570)),
+  (Color(0xFFEDEAFF), Color(0xFF635BCE)),
+  (Color(0xFFFFE5E2), Color(0xFFE53935)),
+  (Color(0xFFE0F5FA), Color(0xFF0088A8)),
+];
+
+IconData _iconFor(String slug) => _categoryIcons[slug] ?? Icons.category_outlined;
+
+(Color, Color) _coloursFor(int index) => _tilePalette[index % _tilePalette.length];
+
+// ---------------------------------------------------------------------------
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(child: _HomeTab()),
-    );
-  }
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeTab extends StatelessWidget {
-  const _HomeTab();
+class _HomeScreenState extends State<HomeScreen> {
+  int _tab = 0;
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      children: const [
-        _HomeHeader(),
-        SizedBox(height: 16),
-        _SearchBar(),
-        SizedBox(height: 12),
-        _ProblemBanner(),
-        SizedBox(height: 16),
-        _ServiceCardGrid(),
-        SizedBox(height: 16),
-        _EmergencyBanner(),
-        SizedBox(height: 20),
-        _SectionHeader(title: 'Popular Services'),
-        SizedBox(height: 12),
-        _PopularServicesRow(),
-        SizedBox(height: 20),
-        _SectionHeader(title: 'Nearby Professionals'),
-        SizedBox(height: 12),
-        _ProfessionalCard(
-          name: 'Ramesh Construction',
-          category: 'General Construction',
-          distanceKm: 2.3,
-          rating: 4.8,
-          reviewCount: 124,
-        ),
-        SizedBox(height: 12),
-        _ProfessionalCard(
-          name: 'Shiva Plumber',
-          category: 'Plumbing Services',
-          distanceKm: 1.7,
-          rating: 4.7,
-          reviewCount: 89,
-        ),
-        SizedBox(height: 12),
-      ],
-    );
-  }
-}
+  /// Real tabs over an IndexedStack rather than pushing routes, so the bar
+  /// keeps a truthful selected state and each tab holds its scroll position.
+  late final List<Widget> _tabs = [
+    _HomeTab(onSeeAll: (index) => setState(() => _tab = index)),
+    CategoryScreen(
+      title: 'Services',
+      subtitle: 'Skilled professionals for your home needs',
+      icon: Icons.engineering,
+      iconColor: AppColors.orange,
+      items: [for (final c in kServiceCategories) c.name],
+      itemRoutes: routesFor(kServiceCategories, CatalogRepository.serviceVertical, 'services'),
+    ),
+    CategoryScreen(
+      title: 'Shop',
+      subtitle: 'Quality materials at the best price',
+      icon: Icons.shopping_cart_rounded,
+      iconColor: AppColors.green,
+      items: [for (final c in kShopCategories) c.name],
+      itemRoutes: routesFor(kShopCategories, CatalogRepository.shopVertical, 'shop'),
+    ),
+    const _ComingSoonTab(
+      icon: Icons.precision_manufacturing,
+      title: 'Rentals',
+      message: 'Tools and equipment hire is on the way.',
+    ),
+    const MyBookingsScreen(),
+  ];
 
-class _HomeHeader extends StatelessWidget {
-  const _HomeHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Icon(Icons.home_rounded, color: AppColors.primary, size: 36),
-            Positioned(
-              right: 2,
-              bottom: 6,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.accentOrange,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'PAKKA',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            Text(
-              'Build · Maintain · Live Better',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-        const Spacer(),
-        Row(
-          children: [
-            const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textPrimary),
-            const SizedBox(width: 2),
-            const Text(
-              'Kathmandu',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          ],
-        ),
-        const SizedBox(width: 12),
-        const _AccountButton(),
-      ],
-    );
-  }
-}
-
-/// Signed out it opens sign-in; signed in it opens the account screen
-/// (sign-out / delete account). The app never requires an account to
-/// browse, so this is the only permanent entry point.
-class _AccountButton extends StatelessWidget {
-  const _AccountButton();
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = AuthScope.of(context);
-
-    return InkWell(
-      customBorder: const CircleBorder(),
-      onTap: () {
-        if (!auth.isSignedIn) {
-          Navigator.of(context).push<bool>(
-            MaterialPageRoute(builder: (_) => AuthScreen(auth: auth)),
-          );
-          return;
-        }
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => AccountScreen(auth: auth)),
-        );
-      },
-      child: CircleAvatar(
-        radius: 18,
-        backgroundColor: AppColors.primary,
-        child: Icon(
-          auth.isSignedIn ? Icons.person : Icons.person_outline,
-          color: Colors.white,
-          size: 20,
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchBar extends StatelessWidget {
-  const _SearchBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const TextField(
-        decoration: InputDecoration(
-          hintText: 'What do you need?',
-          hintStyle: TextStyle(color: AppColors.textSecondary),
-          prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 16),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProblemBanner extends StatelessWidget {
-  const _ProblemBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryLight],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.camera_alt_rounded, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tell us your problem',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Share a photo or video, and we'll help you find the right solution.",
-                    style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ServiceCardGrid extends StatelessWidget {
-  const _ServiceCardGrid();
-
-  static Map<String, WidgetBuilder> _routesFor(
+  static Map<String, WidgetBuilder> routesFor(
     List<LocalCategory> categories,
     String vertical,
     String assetRoot,
@@ -274,209 +116,42 @@ class _ServiceCardGrid extends StatelessWidget {
     };
   }
 
-  static final Map<String, Map<String, WidgetBuilder>> _cardItemRoutes = {
-    'Services': _routesFor(
-      kServiceCategories,
-      CatalogRepository.serviceVertical,
-      'services',
-    ),
-    'Shop': _routesFor(
-      kShopCategories,
-      CatalogRepository.shopVertical,
-      'shop',
-    ),
-  };
-
-  void _open(BuildContext context, _DashboardCard card) {
-    // Bookings has no browsable catalog behind it - it goes to the customer's
-    // own bookings, not a list of things to pick from.
-    if (card.title == 'Bookings') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-      );
-      return;
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CategoryScreen(
-          title: card.title,
-          subtitle: card.subtitle,
-          icon: card.icon,
-          iconColor: card.iconColor,
-          items: card.allItems ?? [...card.columnA, ...card.columnB],
-          itemRoutes: _cardItemRoutes[card.title],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    const services = _DashboardCard(
-      icon: Icons.engineering_rounded,
-      iconColor: AppColors.accentOrange,
-      title: 'Services',
-      subtitle: 'Find a professional',
-      gradient: AppColors.servicesGradient,
-      columnA: ['Construction', 'Electrical', 'Cleaning', 'Mason', 'Appliance Repair'],
-      columnB: ['Plumbing', 'Painting', 'Carpenter', 'Waterproofing', 'Interior'],
-    );
-    const shop = _DashboardCard(
-      icon: Icons.shopping_cart_rounded,
-      iconColor: Color(0xFF3E9142),
-      title: 'Shop',
-      subtitle: 'Materials & hardware',
-      gradient: AppColors.shopGradient,
-      columnA: ['Cement', 'Electrical', 'Sanitaryware', 'Tools'],
-      columnB: ['Steel', 'Paint', 'Hardware', 'Water Tanks'],
-      allItems: [
-        'Cement',
-        'Electrical',
-        'Sanitaryware',
-        'Tools',
-        'Steel',
-        'Paint',
-        'Hardware',
-        'Water Tanks',
-        'Plumbing Materials',
-        'Tiles',
-        'Roofing',
-        'Construction Chemicals',
-        'Safety',
-      ],
-    );
-    const rentals = _DashboardCard(
-      icon: Icons.precision_manufacturing_rounded,
-      iconColor: Color(0xFF2E7BC4),
-      title: 'Rentals',
-      subtitle: 'Tools & equipment',
-      gradient: AppColors.rentalsGradient,
-      columnA: ['Scaffolding', 'Drilling machines', 'Concrete mixers', 'Construction equipment'],
-      columnB: ['Ladders', 'Cutting machines', 'Generators'],
-    );
-    const bookings = _DashboardCard(
-      icon: Icons.assignment_rounded,
-      iconColor: Color(0xFF7A5FC7),
-      title: 'Bookings',
-      subtitle: 'Track your work',
-      gradient: AppColors.bookingsGradient,
-      columnA: ['Upcoming services', 'Previous services', 'Invoices'],
-      columnB: ['Active jobs', 'Orders', 'Warranty'],
-    );
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _open(context, services),
-                child: services,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _open(context, shop),
-                child: shop,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _open(context, rentals),
-                child: rentals,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => _open(context, bookings),
-                child: bookings,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardCard extends StatelessWidget {
-  const _DashboardCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.gradient,
-    required this.columnA,
-    required this.columnB,
-    this.allItems,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final List<Color> gradient;
-  final List<String> columnA;
-  final List<String> columnB;
-
-  /// Full category list for the detail screen, when the card's two bullet
-  /// columns only show a preview. Falls back to columnA + columnB.
-  final List<String>? allItems;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: iconColor, size: 26),
-              const Spacer(),
-              const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textPrimary),
-            ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: IndexedStack(index: _tab, children: _tabs),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (index) => setState(() => _tab = index),
+        height: 70,
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFFFE9B5),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home, color: AppColors.darkOrange),
+            label: 'Home',
           ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
+          NavigationDestination(
+            icon: Icon(Icons.build_outlined),
+            selectedIcon: Icon(Icons.build, color: AppColors.darkOrange),
+            label: 'Services',
           ),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart, color: AppColors.darkOrange),
+            label: 'Shop',
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _BulletColumn(items: columnA)),
-              Expanded(child: _BulletColumn(items: columnB)),
-            ],
+          NavigationDestination(
+            icon: Icon(Icons.construction_outlined),
+            selectedIcon: Icon(Icons.construction, color: AppColors.darkOrange),
+            label: 'Rentals',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month, color: AppColors.darkOrange),
+            label: 'Bookings',
           ),
         ],
       ),
@@ -484,83 +159,212 @@ class _DashboardCard extends StatelessWidget {
   }
 }
 
-class _BulletColumn extends StatelessWidget {
-  const _BulletColumn({required this.items});
+class _HomeTab extends StatelessWidget {
+  const _HomeTab({required this.onSeeAll});
 
-  final List<String> items;
+  /// Switches the bottom-nav tab, so "View All" lands on the same screen the
+  /// bar would reach rather than a parallel copy of it.
+  final void Function(int tabIndex) onSeeAll;
+
+  void _openCategory(BuildContext context, LocalCategory category, String vertical, String root) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SubcategoryScreen(
+          title: category.name,
+          imagePathPrefix: category.assetPathPrefix(root),
+          itemCount: category.imageCount,
+          vertical: vertical,
+          categorySlug: category.slug,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: items
-          .map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                '• $item',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.textPrimary, height: 1.3),
+    return SafeArea(
+      child: CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(child: _Header()),
+          SliverToBoxAdapter(child: _Hero(onGetStarted: () => onSeeAll(1))),
+          const SliverToBoxAdapter(child: _SearchBar()),
+          const SliverToBoxAdapter(child: SizedBox(height: 25)),
+
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              icon: Icons.engineering,
+              title: 'Services',
+              subtitle: 'Skilled professionals for your home needs',
+              color: AppColors.orange,
+              onViewAll: () => onSeeAll(1),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 135,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                scrollDirection: Axis.horizontal,
+                itemCount: kServiceCategories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final category = kServiceCategories[i];
+                  final (bg, fg) = _coloursFor(i);
+                  return _ServiceTile(
+                    title: category.name,
+                    icon: _iconFor(category.slug),
+                    background: bg,
+                    iconColor: fg,
+                    onTap: () => _openCategory(
+                      context, category, CatalogRepository.serviceVertical, 'services'),
+                  );
+                },
               ),
             ),
-          )
-          .toList(),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 22)),
+          SliverToBoxAdapter(
+            child: _CategorySection(
+              title: 'Shop',
+              subtitle: 'Quality materials at the best price',
+              icon: Icons.shopping_cart_rounded,
+              background: AppColors.lightGreen,
+              iconColor: AppColors.green,
+              onHeaderTap: () => onSeeAll(2),
+              items: [
+                for (final category in kShopCategories)
+                  _SectionItem(
+                    title: category.name,
+                    icon: _iconFor(category.slug),
+                    onTap: () => _openCategory(
+                        context, category, CatalogRepository.shopVertical, 'shop'),
+                  ),
+              ],
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 18)),
+          SliverToBoxAdapter(
+            child: _CategorySection(
+              title: 'Rentals',
+              subtitle: 'Tools & equipment for your projects',
+              icon: Icons.precision_manufacturing,
+              background: AppColors.lightPurple,
+              iconColor: AppColors.indigo,
+              onHeaderTap: () => onSeeAll(3),
+              items: [
+                for (final (title, icon) in const [
+                  ('Scaffolding', Icons.grid_view_rounded),
+                  ('Generator', Icons.bolt),
+                  ('Water Tank', Icons.water_drop),
+                  ('Jackhammer', Icons.hardware),
+                  ('Excavator', Icons.agriculture),
+                ])
+                  _SectionItem(
+                    title: title,
+                    icon: icon,
+                    onTap: () => onSeeAll(3),
+                  ),
+              ],
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 18)),
+          SliverToBoxAdapter(
+            child: _CategorySection(
+              title: 'Booking',
+              subtitle: 'Easy booking. Save time.',
+              icon: Icons.calendar_month,
+              background: AppColors.lightOrange,
+              iconColor: const Color(0xFFE64A19),
+              onHeaderTap: () => onSeeAll(4),
+              items: [
+                for (final (title, icon) in const [
+                  ('My Bookings', Icons.event_available),
+                  ('Track Booking', Icons.local_shipping),
+                ])
+                  _SectionItem(title: title, icon: icon, onTap: () => onSeeAll(4)),
+              ],
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 25)),
+          const SliverToBoxAdapter(child: _TrustRow()),
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
+        ],
+      ),
     );
   }
 }
 
-class _EmergencyBanner extends StatelessWidget {
-  const _EmergencyBanner();
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+class _Header extends StatelessWidget {
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: AppColors.emergencyGradient,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(color: AppColors.emergencyRed, shape: BoxShape.circle),
-            child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 20),
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.orange, AppColors.darkOrange],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.home_rounded, color: Colors.white, size: 32),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Need urgent help?',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.emergencyRed,
-                    fontSize: 14,
+                Text.rich(
+                  TextSpan(
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+                    children: [
+                      TextSpan(text: 'Pakka ', style: TextStyle(color: AppColors.navy)),
+                      TextSpan(text: 'Homes', style: TextStyle(color: AppColors.orange)),
+                    ],
                   ),
                 ),
                 Text(
-                  'Find nearby emergency home services',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                  'Build • Fix • Improve',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
                 ),
               ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.emergencyRed,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-            icon: const Icon(Icons.call_rounded, size: 16),
-            label: const Text('Call Now', style: TextStyle(fontSize: 12)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: const [
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: AppColors.blue, size: 20),
+                  SizedBox(width: 3),
+                  Text(
+                    'Kathmandu',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy),
+                  ),
+                  Icon(Icons.keyboard_arrow_down, size: 18),
+                ],
+              ),
+              SizedBox(height: 6),
+              _AccountButton(),
+            ],
           ),
         ],
       ),
@@ -568,144 +372,559 @@ class _EmergencyBanner extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
+/// Signed out it opens sign-in; signed in it opens the account screen. This is
+/// the only permanent way in - nothing else in the app demands an account.
+class _AccountButton extends StatelessWidget {
+  const _AccountButton();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+    final auth = AuthScope.of(context);
+
+    return InkWell(
+      customBorder: const CircleBorder(),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              auth.isSignedIn ? AccountScreen(auth: auth) : AuthScreen(auth: auth),
         ),
-        Row(
-          children: const [
-            Text('See all', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _PopularServicesRow extends StatelessWidget {
-  const _PopularServicesRow();
-
-  static const _items = [
-    ('Plumbing', 'assets/plumbing.png'),
-    ('Electrical', 'assets/electrical.png'),
-    ('Cleaning', 'assets/cleaning.png'),
-    ('Painting', 'assets/painting.png'),
-    ('AC Repair', 'assets/repair.png'),
-    ('Waterproofing', 'assets/waterproofing.png'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: _items
-          .map(
-            (item) => Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {},
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: SizedBox(
-                    height: 78,
-                    child: Image.asset(item.$2, fit: BoxFit.contain),
-                  ),
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _ProfessionalCard extends StatelessWidget {
-  const _ProfessionalCard({
-    required this.name,
-    required this.category,
-    required this.distanceKm,
-    required this.rating,
-    required this.reviewCount,
-  });
-
-  final String name;
-  final String category;
-  final double distanceKm;
-  final double rating;
-  final int reviewCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const CircleAvatar(
-            radius: 26,
-            backgroundColor: Color(0xFFE9EEF3),
-            child: Icon(Icons.person, color: AppColors.textSecondary, size: 28),
+          Icon(
+            auth.isSignedIn ? Icons.account_circle : Icons.account_circle_outlined,
+            size: 27,
+            color: AppColors.navy,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            auth.isSignedIn ? 'Account' : 'Sign in',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hero
+// ---------------------------------------------------------------------------
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.onGetStarted});
+
+  final VoidCallback onGetStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(18),
+      child: Container(
+        height: 210,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFC107), Color(0xFFFF8F00)],
+          ),
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withValues(alpha: 0.20),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -25,
+              bottom: -15,
+              child: Icon(
+                Icons.home_work_rounded,
+                size: 190,
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your Home\nOur Priority',
+                    style: TextStyle(
+                      fontSize: 29,
+                      height: 1.05,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const SizedBox(
+                    width: 260,
+                    child: Text(
+                      'Trusted services, quality materials and everything you '
+                      'need — all in one place.',
+                      style: TextStyle(fontSize: 14, height: 1.4, color: AppColors.navy),
+                    ),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: onGetStarted,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.navy,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Get Started', style: TextStyle(fontWeight: FontWeight.w800)),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward, size: 18),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+class _SearchBar extends StatelessWidget {
+  const _SearchBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(30),
+        // The backend already supports /subcategories/?search=, but there is
+        // no results screen yet, so this says so rather than pretending.
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Search is coming soon')),
+        ),
+        child: Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: const Row(
+            children: [
+              SizedBox(width: 18),
+              Icon(Icons.search, size: 28, color: AppColors.navy),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Search services, products, rentals...',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+              ),
+              Icon(Icons.qr_code_scanner_rounded, color: AppColors.blue),
+              SizedBox(width: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sections
+// ---------------------------------------------------------------------------
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onViewAll,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Row(
+        children: [
+          Container(
+            height: 42,
+            width: 42,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(icon, color: Colors.white, size: 23),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text(category, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
-                    Text('$distanceKm km', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF5A623)),
-                    Text(
-                      '$rating ($reviewCount)',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ],
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE6F4E9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Available today',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF3E9142), fontWeight: FontWeight.w600),
-                  ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          TextButton(
+            onPressed: onViewAll,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.navy,
+              visualDensity: VisualDensity.compact,
             ),
-            child: const Text('Book Now', style: TextStyle(fontSize: 12)),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('View All',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                SizedBox(width: 4),
+                Icon(Icons.arrow_forward_ios, size: 13),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ServiceTile extends StatelessWidget {
+  const _ServiceTile({
+    required this.title,
+    required this.icon,
+    required this.background,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color background;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 108,
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 6),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 35),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppColors.navy,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionItem {
+  const _SectionItem({required this.title, required this.icon, required this.onTap});
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.background,
+    required this.iconColor,
+    required this.items,
+    required this.onHeaderTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color background;
+  final Color iconColor;
+  final List<_SectionItem> items;
+  final VoidCallback onHeaderTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 15),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              onTap: onHeaderTap,
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Container(
+                    height: 42,
+                    width: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 25),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 15, color: AppColors.navy),
+                ],
+              ),
+            ),
+            const SizedBox(height: 15),
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return GestureDetector(
+                    onTap: item.onTap,
+                    child: Container(
+                      width: 120,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            height: 52,
+                            width: 52,
+                            decoration: BoxDecoration(
+                              color: background,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(item.icon, color: iconColor, size: 28),
+                          ),
+                          const SizedBox(height: 9),
+                          Text(
+                            item.title,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              color: AppColors.navy,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Trust strip
+// ---------------------------------------------------------------------------
+
+class _TrustRow extends StatelessWidget {
+  const _TrustRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _TrustItem(
+                icon: Icons.verified_user, title: 'Verified', subtitle: 'Professionals'),
+            _TrustItem(icon: Icons.verified, title: 'Quality', subtitle: 'Products'),
+            _TrustItem(icon: Icons.local_shipping, title: 'Fast &', subtitle: 'Reliable'),
+            _TrustItem(icon: Icons.support_agent, title: '24/7', subtitle: 'Support'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustItem extends StatelessWidget {
+  const _TrustItem({required this.icon, required this.title, required this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.blue, size: 27),
+        const SizedBox(height: 5),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+          ),
+        ),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComingSoonTab extends StatelessWidget {
+  const _ComingSoonTab({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        foregroundColor: AppColors.textPrimary,
+        title: Text(title),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 52, color: AppColors.textSecondary),
+              const SizedBox(height: 14),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
