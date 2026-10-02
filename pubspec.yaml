@@ -28,6 +28,7 @@ flutter:
     - assets/painting.png
     - assets/waterproofing.png
     - assets/repair.png
+    - assets/home/
     - assets/home/services/
     - assets/home/shop/
     - assets/home/rentals/

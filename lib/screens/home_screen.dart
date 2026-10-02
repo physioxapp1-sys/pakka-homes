@@ -463,13 +463,17 @@ class _Hero extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(18),
       child: Container(
-        height: 210,
+        // The headline and subtitle are part of the artwork, so nothing is
+        // drawn over it but the button.
+        //
+        // 170 is not arbitrary. The image is 2.83:1; letting it keep that
+        // aspect leaves roughly 27pt under the baked-in text, too little for
+        // a tap target, and the button lands on "all in one place". Taller
+        // than this and cover zooms far enough to crop the worker out
+        // entirely. Anchored left so the text is never the thing that gets
+        // trimmed - the right edge of the house is.
+        height: 170,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFFC107), Color(0xFFFF8F00)],
-          ),
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
@@ -479,65 +483,53 @@ class _Hero extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -25,
-              bottom: -15,
-              child: Icon(
-                Icons.home_work_rounded,
-                size: 190,
-                color: Colors.white.withValues(alpha: 0.18),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(25),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/home/hero.jpg',
+                fit: BoxFit.cover,
+                alignment: Alignment.centerLeft,
+                errorBuilder: (_, __, ___) => Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFFFC107), Color(0xFFFF8F00)],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Your Home\nOur Priority',
-                    style: TextStyle(
-                      fontSize: 29,
-                      height: 1.05,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.navy,
+              Positioned(
+                left: 14,
+                bottom: 12,
+                child: ElevatedButton(
+                  onPressed: onGetStarted,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: AppColors.navy,
+                    elevation: 2,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const SizedBox(
-                    width: 260,
-                    child: Text(
-                      'Trusted services, quality materials and everything you '
-                      'need — all in one place.',
-                      style: TextStyle(fontSize: 14, height: 1.4, color: AppColors.navy),
-                    ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Get Started',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward, size: 18),
+                    ],
                   ),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: onGetStarted,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.navy,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Get Started', style: TextStyle(fontWeight: FontWeight.w800)),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward, size: 18),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
