@@ -10,15 +10,8 @@ import 'category_screen.dart';
 import 'my_bookings_screen.dart';
 import 'subcategory_screen.dart';
 
-// ---------------------------------------------------------------------------
-// Presentation for catalog entries.
-//
-// The catalog itself carries no artwork for a category tile, so the icon and
-// tile colour live here. Anything unmapped still renders - it falls back to a
-// generic icon and takes a colour from the rotation, so adding a category to
-// the spreadsheet never leaves a blank tile.
-// ---------------------------------------------------------------------------
-
+/// Icon per catalog slug. Anything unmapped still renders - it falls back to a
+/// generic icon - so a new row in the spreadsheet never leaves a blank tile.
 const _categoryIcons = <String, IconData>{
   // services
   'construction': Icons.engineering,
@@ -46,154 +39,30 @@ const _categoryIcons = <String, IconData>{
   'safety': Icons.health_and_safety,
 };
 
-/// Artwork for a category tile, keyed '<root>/<slug>' because 'electrical' and
-/// 'paint' exist under both services and shop with different pictures.
-///
-/// Each image carries its own label and its own pale background, so the colour
-/// here is that background sampled from the file's border. The tile paints it
-/// behind a BoxFit.contain image: letterboxing becomes invisible, and nothing
-/// crops the baked-in label the way BoxFit.cover would.
-///
-/// Partial by design - a slug with no entry falls back to the icon tile.
-const _tileArt = <String, (Color, String)>{
-  'services/carpenter': (Color(0xFFF2DEC5), 'assets/home/services/carpenter.png'),
-  'services/cleaning': (Color(0xFFC2EDE3), 'assets/home/services/cleaning.png'),
-  'services/construction': (Color(0xFFD5D1C6), 'assets/home/services/construction.png'),
-  'services/electrical': (Color(0xFFDFEED7), 'assets/home/services/electrical.png'),
-  'services/painting': (Color(0xFFC6E5E7), 'assets/home/services/painting.png'),
-  'services/plumbing': (Color(0xFFE3F0F9), 'assets/home/services/plumbing.png'),
-  'shop/cement': (Color(0xFFEBE0CE), 'assets/home/shop/cement.png'),
-  'shop/electrical': (Color(0xFFC8E5C7), 'assets/home/shop/electrical.png'),
-  'shop/hardware': (Color(0xFFE4BF95), 'assets/home/shop/hardware.png'),
-  'shop/paint': (Color(0xFFC3DFEB), 'assets/home/shop/paint.png'),
-  'rentals/concrete-mixer': (Color(0xFFCFE1F9), 'assets/home/rentals/concrete-mixer.png'),
-  'rentals/excavator': (Color(0xFFD0E2FA), 'assets/home/rentals/excavator.png'),
-  'rentals/generator': (Color(0xFFD0E2FA), 'assets/home/rentals/generator.png'),
-  'rentals/jackhammer': (Color(0xFFCFE1F9), 'assets/home/rentals/jackhammer.png'),
-  'rentals/scaffolding': (Color(0xFFCFE1F9), 'assets/home/rentals/scaffolding.png'),
-};
-
-const _tilePalette = <(Color, Color)>[
-  (Color(0xFFE4F0FF), Color(0xFF1976D2)),
-  (Color(0xFFFFF1D2), Color(0xFFF59E0B)),
-  (Color(0xFFE2F7EC), Color(0xFF159570)),
-  (Color(0xFFEDEAFF), Color(0xFF635BCE)),
-  (Color(0xFFFFE5E2), Color(0xFFE53935)),
-  (Color(0xFFE0F5FA), Color(0xFF0088A8)),
-];
-
 IconData _iconFor(String slug) => _categoryIcons[slug] ?? Icons.category_outlined;
 
-(Color, Color) _coloursFor(int index) => _tilePalette[index % _tilePalette.length];
+Map<String, WidgetBuilder> _routesFor(
+  List<LocalCategory> categories,
+  String vertical,
+  String assetRoot,
+) {
+  return {
+    for (final category in categories)
+      category.name: (_) => SubcategoryScreen(
+            title: category.name,
+            imagePathPrefix: category.assetPathPrefix(assetRoot),
+            itemCount: category.imageCount,
+            vertical: vertical,
+            categorySlug: category.slug,
+          ),
+  };
+}
 
-// ---------------------------------------------------------------------------
-
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _tab = 0;
-
-  /// Real tabs over an IndexedStack rather than pushing routes, so the bar
-  /// keeps a truthful selected state and each tab holds its scroll position.
-  late final List<Widget> _tabs = [
-    _HomeTab(onSeeAll: (index) => setState(() => _tab = index)),
-    CategoryScreen(
-      title: 'Services',
-      subtitle: 'Skilled professionals for your home needs',
-      icon: Icons.engineering,
-      iconColor: AppColors.orange,
-      items: [for (final c in kServiceCategories) c.name],
-      itemRoutes: routesFor(kServiceCategories, CatalogRepository.serviceVertical, 'services'),
-    ),
-    CategoryScreen(
-      title: 'Shop',
-      subtitle: 'Quality materials at the best price',
-      icon: Icons.shopping_cart_rounded,
-      iconColor: AppColors.green,
-      items: [for (final c in kShopCategories) c.name],
-      itemRoutes: routesFor(kShopCategories, CatalogRepository.shopVertical, 'shop'),
-    ),
-    const _ComingSoonTab(
-      icon: Icons.precision_manufacturing,
-      title: 'Rentals',
-      message: 'Tools and equipment hire is on the way.',
-    ),
-    const MyBookingsScreen(),
-  ];
-
-  static Map<String, WidgetBuilder> routesFor(
-    List<LocalCategory> categories,
-    String vertical,
-    String assetRoot,
-  ) {
-    return {
-      for (final category in categories)
-        category.name: (_) => SubcategoryScreen(
-              title: category.name,
-              imagePathPrefix: category.assetPathPrefix(assetRoot),
-              itemCount: category.imageCount,
-              vertical: vertical,
-              categorySlug: category.slug,
-            ),
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(index: _tab, children: _tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (index) => setState(() => _tab = index),
-        height: 70,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFFFE9B5),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: AppColors.darkOrange),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.build_outlined),
-            selectedIcon: Icon(Icons.build, color: AppColors.darkOrange),
-            label: 'Services',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart, color: AppColors.darkOrange),
-            label: 'Shop',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.construction_outlined),
-            selectedIcon: Icon(Icons.construction, color: AppColors.darkOrange),
-            label: 'Rentals',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month, color: AppColors.darkOrange),
-            label: 'Bookings',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.onSeeAll});
-
-  /// Switches the bottom-nav tab, so "View All" lands on the same screen the
-  /// bar would reach rather than a parallel copy of it.
-  final void Function(int tabIndex) onSeeAll;
-
-  void _openCategory(BuildContext context, LocalCategory category, String vertical, String root) {
+  void _openCategory(
+      BuildContext context, LocalCategory category, String vertical, String root) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SubcategoryScreen(
@@ -207,129 +76,168 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
+  void _openServices(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryScreen(
+          title: 'Services',
+          subtitle: 'Skilled professionals for your home needs',
+          icon: Icons.engineering,
+          iconColor: AppColors.green,
+          items: [for (final c in kServiceCategories) c.name],
+          itemRoutes:
+              _routesFor(kServiceCategories, CatalogRepository.serviceVertical, 'services'),
+        ),
+      ),
+    );
+  }
+
+  void _openShop(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CategoryScreen(
+          title: 'Shop',
+          subtitle: 'Quality materials at the best price',
+          icon: Icons.shopping_cart_rounded,
+          iconColor: AppColors.green,
+          items: [for (final c in kShopCategories) c.name],
+          itemRoutes: _routesFor(kShopCategories, CatalogRepository.shopVertical, 'shop'),
+        ),
+      ),
+    );
+  }
+
+  void _openRentals(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const _ComingSoonScreen(
+          icon: Icons.precision_manufacturing,
+          title: 'Rentals',
+          message: 'Tools and equipment hire is on the way.',
+        ),
+      ),
+    );
+  }
+
+  void _openBookings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(child: _Header()),
-          SliverToBoxAdapter(child: _Hero(onGetStarted: () => onSeeAll(1))),
-          const SliverToBoxAdapter(child: _SearchBar()),
-          const SliverToBoxAdapter(child: SizedBox(height: 25)),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: _Header()),
+            const SliverToBoxAdapter(child: _Hero()),
+            const SliverToBoxAdapter(child: _SearchBar()),
+            const SliverToBoxAdapter(child: SizedBox(height: 25)),
 
-          SliverToBoxAdapter(
-            child: _SectionHeader(
-              icon: Icons.engineering,
-              title: 'Services',
-              subtitle: 'Skilled professionals for your home needs',
-              color: AppColors.orange,
-              onViewAll: () => onSeeAll(1),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 135,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                scrollDirection: Axis.horizontal,
-                itemCount: kServiceCategories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, i) {
-                  final category = kServiceCategories[i];
-                  final (bg, fg) = _coloursFor(i);
-                  return _CategoryTile(
-                    artKey: 'services/${category.slug}',
-                    title: category.name,
-                    icon: _iconFor(category.slug),
-                    background: bg,
-                    iconColor: fg,
-                    onTap: () => _openCategory(
-                      context, category, CatalogRepository.serviceVertical, 'services'),
-                  );
-                },
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                icon: Icons.engineering,
+                title: 'Services',
+                subtitle: 'Skilled professionals for your home needs',
+                onViewAll: () => _openServices(context),
               ),
             ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 22)),
-          SliverToBoxAdapter(
-            child: _CategorySection(
-              title: 'Shop',
-              subtitle: 'Quality materials at the best price',
-              icon: Icons.shopping_cart_rounded,
-              background: AppColors.lightGreen,
-              iconColor: AppColors.green,
-              onHeaderTap: () => onSeeAll(2),
-              items: [
-                for (final category in kShopCategories)
-                  _SectionItem(
-                    artKey: 'shop/${category.slug}',
-                    title: category.name,
-                    icon: _iconFor(category.slug),
-                    onTap: () => _openCategory(
-                        context, category, CatalogRepository.shopVertical, 'shop'),
-                  ),
-              ],
+            // Breathing room between the section header and its row.
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 112,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: kServiceCategories.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) {
+                    final category = kServiceCategories[i];
+                    return _IconTile(
+                      title: category.name,
+                      icon: _iconFor(category.slug),
+                      onTap: () => _openCategory(
+                          context, category, CatalogRepository.serviceVertical, 'services'),
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
-          SliverToBoxAdapter(
-            child: _CategorySection(
-              title: 'Rentals',
-              subtitle: 'Tools & equipment for your projects',
-              icon: Icons.precision_manufacturing,
-              background: AppColors.lightPurple,
-              iconColor: AppColors.indigo,
-              onHeaderTap: () => onSeeAll(3),
-              // These five are exactly the rental artwork that exists, so the
-              // row is all pictures and no fallbacks.
-              items: [
-                for (final (slug, title, icon) in const [
-                  ('scaffolding', 'Scaffolding', Icons.grid_view_rounded),
-                  ('generator', 'Generator', Icons.bolt),
-                  ('concrete-mixer', 'Concrete Mixer', Icons.rotate_right),
-                  ('jackhammer', 'Jackhammer', Icons.hardware),
-                  ('excavator', 'Excavator', Icons.agriculture),
-                ])
-                  _SectionItem(
-                    artKey: 'rentals/$slug',
-                    title: title,
-                    icon: icon,
-                    onTap: () => onSeeAll(3),
-                  ),
-              ],
+            const SliverToBoxAdapter(child: SizedBox(height: 22)),
+            SliverToBoxAdapter(
+              child: _CategorySection(
+                title: 'Shop',
+                subtitle: 'Quality materials at the best price',
+                icon: Icons.shopping_cart_rounded,
+                background: AppColors.lightGreen,
+                onHeaderTap: () => _openShop(context),
+                items: [
+                  for (final category in kShopCategories)
+                    _SectionItem(
+                      title: category.name,
+                      icon: _iconFor(category.slug),
+                      onTap: () => _openCategory(
+                          context, category, CatalogRepository.shopVertical, 'shop'),
+                    ),
+                ],
+              ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
-          SliverToBoxAdapter(
-            child: _CategorySection(
-              title: 'Booking',
-              subtitle: 'Easy booking. Save time.',
-              icon: Icons.calendar_month,
-              background: AppColors.lightOrange,
-              iconColor: const Color(0xFFE64A19),
-              onHeaderTap: () => onSeeAll(4),
-              items: [
-                for (final (title, icon) in const [
-                  ('My Bookings', Icons.event_available),
-                  ('Track Booking', Icons.local_shipping),
-                ])
-                  _SectionItem(
-                    artKey: 'bookings/${title.toLowerCase()}',
-                    title: title,
-                    icon: icon,
-                    onTap: () => onSeeAll(4),
-                  ),
-              ],
+            const SliverToBoxAdapter(child: SizedBox(height: 18)),
+            SliverToBoxAdapter(
+              child: _CategorySection(
+                title: 'Rentals',
+                subtitle: 'Tools & equipment for your projects',
+                icon: Icons.precision_manufacturing,
+                background: AppColors.lightPurple,
+                onHeaderTap: () => _openRentals(context),
+                items: [
+                  for (final (title, icon) in const [
+                    ('Scaffolding', Icons.grid_view_rounded),
+                    ('Generator', Icons.bolt),
+                    ('Water Tank', Icons.water_drop),
+                    ('Jackhammer', Icons.hardware),
+                    ('Excavator', Icons.agriculture),
+                  ])
+                    _SectionItem(
+                      title: title,
+                      icon: icon,
+                      onTap: () => _openRentals(context),
+                    ),
+                ],
+              ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 25)),
-          const SliverToBoxAdapter(child: _TrustRow()),
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 18)),
+            SliverToBoxAdapter(
+              child: _CategorySection(
+                title: 'Booking',
+                subtitle: 'Easy booking. Save time.',
+                icon: Icons.calendar_month,
+                background: AppColors.lightOrange,
+                onHeaderTap: () => _openBookings(context),
+                items: [
+                  for (final (title, icon) in const [
+                    ('My Bookings', Icons.event_available),
+                    ('Track Booking', Icons.local_shipping),
+                  ])
+                    _SectionItem(
+                      title: title,
+                      icon: icon,
+                      onTap: () => _openBookings(context),
+                    ),
+                ],
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+          ],
+        ),
       ),
     );
   }
@@ -361,56 +269,25 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text.rich(
-                  TextSpan(
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
-                    children: [
-                      TextSpan(text: 'Pakka ', style: TextStyle(color: AppColors.navy)),
-                      TextSpan(text: 'Homes', style: TextStyle(color: AppColors.orange)),
-                    ],
-                  ),
-                ),
-                Text(
-                  'Build • Fix • Improve',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
-              Row(
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                 children: [
-                  Icon(Icons.location_on, color: AppColors.blue, size: 20),
-                  SizedBox(width: 3),
-                  Text(
-                    'Kathmandu',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navy),
-                  ),
-                  Icon(Icons.keyboard_arrow_down, size: 18),
+                  TextSpan(text: 'Pakka ', style: TextStyle(color: AppColors.navy)),
+                  TextSpan(text: 'Homes', style: TextStyle(color: AppColors.orange)),
                 ],
               ),
-              SizedBox(height: 6),
-              _AccountButton(),
-            ],
+            ),
           ),
+          const _AccountButton(),
         ],
       ),
     );
   }
 }
 
-/// Signed out it opens sign-in; signed in it opens the account screen. This is
-/// the only permanent way in - nothing else in the app demands an account.
+/// Icon only. Signed out it opens sign-in, signed in the account screen - the
+/// only permanent way in, since nothing else in the app demands an account.
 class _AccountButton extends StatelessWidget {
   const _AccountButton();
 
@@ -418,32 +295,18 @@ class _AccountButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
 
-    return InkWell(
-      customBorder: const CircleBorder(),
-      onTap: () => Navigator.of(context).push(
+    return IconButton(
+      tooltip: auth.isSignedIn ? 'Account' : 'Sign in',
+      iconSize: 30,
+      color: AppColors.navy,
+      icon: Icon(
+        auth.isSignedIn ? Icons.account_circle : Icons.account_circle_outlined,
+      ),
+      onPressed: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) =>
               auth.isSignedIn ? AccountScreen(auth: auth) : AuthScreen(auth: auth),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            auth.isSignedIn ? Icons.account_circle : Icons.account_circle_outlined,
-            size: 27,
-            color: AppColors.navy,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            auth.isSignedIn ? 'Account' : 'Sign in',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -454,25 +317,16 @@ class _AccountButton extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.onGetStarted});
-
-  final VoidCallback onGetStarted;
+  const _Hero();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(18),
       child: Container(
-        // The headline and subtitle are part of the artwork, so nothing is
-        // drawn over it but the button.
-        //
-        // 170 is not arbitrary. The image is 2.83:1; letting it keep that
-        // aspect leaves roughly 27pt under the baked-in text, too little for
-        // a tap target, and the button lands on "all in one place". Taller
-        // than this and cover zooms far enough to crop the worker out
-        // entirely. Anchored left so the text is never the thing that gets
-        // trimmed - the right edge of the house is.
-        height: 170,
+        // The headline and subtitle are part of the artwork, and with no
+        // button over it the banner can keep the image's own 2.83:1 aspect
+        // instead of a fixed height that would crop it.
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
@@ -485,50 +339,21 @@ class _Hero extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(25),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                'assets/home/hero.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.centerLeft,
-                errorBuilder: (_, __, ___) => Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFFFC107), Color(0xFFFF8F00)],
-                    ),
+          child: AspectRatio(
+            aspectRatio: 1280 / 452,
+            child: Image.asset(
+              'assets/home/hero.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFFC107), Color(0xFFFF8F00)],
                   ),
                 ),
               ),
-              Positioned(
-                left: 14,
-                bottom: 12,
-                child: ElevatedButton(
-                  onPressed: onGetStarted,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.orange,
-                    foregroundColor: AppColors.navy,
-                    elevation: 2,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Get Started',
-                          style: TextStyle(fontWeight: FontWeight.w800)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -597,14 +422,12 @@ class _SectionHeader extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.color,
     required this.onViewAll,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color color;
   final VoidCallback onViewAll;
 
   @override
@@ -613,12 +436,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
         children: [
-          Container(
-            height: 42,
-            width: 42,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 23),
-          ),
+          _IconBadge(icon: icon),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -663,74 +481,65 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// A category tile. Renders the supplied artwork when there is some for this
-/// slug, and an icon with a text label when there is not.
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    required this.artKey,
-    required this.title,
-    required this.icon,
-    required this.background,
-    required this.iconColor,
-    required this.onTap,
-    this.width = 108,
-    this.radius = 18,
-  });
+/// White square, green glyph - the one icon treatment used everywhere.
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon, this.size = 42, this.iconSize = 24});
 
-  final String artKey;
-  final String title;
   final IconData icon;
-  final Color background;
-  final Color iconColor;
-  final VoidCallback onTap;
-  final double width;
-  final double radius;
+  final double size;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    final art = _tileArt[artKey];
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Icon(icon, color: AppColors.green, size: iconSize),
+    );
+  }
+}
 
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.title, required this.icon, required this.onTap});
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
-        width: width,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: art == null
-              ? Container(
-                  color: background,
-                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 6),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, color: iconColor, size: 35),
-                      const SizedBox(height: 12),
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : Container(
-                  color: art.$1,
-                  // The label is part of the picture, so nothing is drawn over
-                  // it and contain keeps it from being cropped.
-                  child: Image.asset(
-                    art.$2,
-                    fit: BoxFit.contain,
-                    // A missing file should cost one tile, not the whole row.
-                    errorBuilder: (_, __, ___) =>
-                        Icon(icon, color: iconColor, size: 35),
-                  ),
-                ),
+      child: Container(
+        width: 100,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.green, size: 34),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 11.5,
+                color: AppColors.navy,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -738,14 +547,8 @@ class _CategoryTile extends StatelessWidget {
 }
 
 class _SectionItem {
-  const _SectionItem({
-    required this.artKey,
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
+  const _SectionItem({required this.title, required this.icon, required this.onTap});
 
-  final String artKey;
   final String title;
   final IconData icon;
   final VoidCallback onTap;
@@ -757,7 +560,6 @@ class _CategorySection extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.background,
-    required this.iconColor,
     required this.items,
     required this.onHeaderTap,
   });
@@ -766,7 +568,6 @@ class _CategorySection extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final Color background;
-  final Color iconColor;
   final List<_SectionItem> items;
   final VoidCallback onHeaderTap;
 
@@ -787,15 +588,7 @@ class _CategorySection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: Row(
                 children: [
-                  Container(
-                    height: 42,
-                    width: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 25),
-                  ),
+                  _IconBadge(icon: icon, iconSize: 25),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -823,75 +616,19 @@ class _CategorySection extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 16),
             SizedBox(
-              height: 120,
+              height: 112,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final item = items[index];
-                  final art = _tileArt[item.artKey];
-
-                  // With artwork the picture is the whole card. Without it,
-                  // the white card with a circled icon from the design.
-                  if (art != null) {
-                    return _CategoryTile(
-                      artKey: item.artKey,
-                      title: item.title,
-                      icon: item.icon,
-                      background: background,
-                      iconColor: iconColor,
-                      onTap: item.onTap,
-                      width: 120,
-                      radius: 15,
-                    );
-                  }
-
-                  return GestureDetector(
+                  return _IconTile(
+                    title: item.title,
+                    icon: item.icon,
                     onTap: item.onTap,
-                    child: Container(
-                      width: 120,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: 52,
-                            width: 52,
-                            decoration: BoxDecoration(
-                              color: background,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(item.icon, color: iconColor, size: 28),
-                          ),
-                          const SizedBox(height: 9),
-                          Text(
-                            item.title,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                              color: AppColors.navy,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   );
                 },
               ),
@@ -903,70 +640,8 @@ class _CategorySection extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Trust strip
-// ---------------------------------------------------------------------------
-
-class _TrustRow extends StatelessWidget {
-  const _TrustRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _TrustItem(
-                icon: Icons.verified_user, title: 'Verified', subtitle: 'Professionals'),
-            _TrustItem(icon: Icons.verified, title: 'Quality', subtitle: 'Products'),
-            _TrustItem(icon: Icons.local_shipping, title: 'Fast &', subtitle: 'Reliable'),
-            _TrustItem(icon: Icons.support_agent, title: '24/7', subtitle: 'Support'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TrustItem extends StatelessWidget {
-  const _TrustItem({required this.icon, required this.title, required this.subtitle});
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.blue, size: 27),
-        const SizedBox(height: 5),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: AppColors.navy,
-          ),
-        ),
-        Text(
-          subtitle,
-          style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-class _ComingSoonTab extends StatelessWidget {
-  const _ComingSoonTab({
+class _ComingSoonScreen extends StatelessWidget {
+  const _ComingSoonScreen({
     required this.icon,
     required this.title,
     required this.message,
