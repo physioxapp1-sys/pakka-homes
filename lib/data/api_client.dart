@@ -35,6 +35,14 @@ class ApiClient {
         () => _client.post(_uri(path), headers: _headers(token), body: jsonEncode(body)),
       );
 
+  Future<dynamic> delete(String path, {Map<String, dynamic>? body, String? token}) => _send(
+        () => _client.delete(
+          _uri(path),
+          headers: _headers(token),
+          body: body == null ? null : jsonEncode(body),
+        ),
+      );
+
   void close() => _client.close();
 
   Map<String, String> _headers(String? token) => {

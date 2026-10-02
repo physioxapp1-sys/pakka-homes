@@ -4,6 +4,7 @@ import '../data/auth_scope.dart';
 import '../data/catalog_repository.dart';
 import '../data/local_catalog.dart';
 import '../theme/app_colors.dart';
+import 'account_screen.dart';
 import 'auth_screen.dart';
 import 'category_screen.dart';
 import 'my_bookings_screen.dart';
@@ -129,8 +130,9 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-/// Signed out it opens sign-in; signed in it offers sign-out. The app never
-/// requires an account to browse, so this is the only permanent entry point.
+/// Signed out it opens sign-in; signed in it opens the account screen
+/// (sign-out / delete account). The app never requires an account to
+/// browse, so this is the only permanent entry point.
 class _AccountButton extends StatelessWidget {
   const _AccountButton();
 
@@ -140,33 +142,16 @@ class _AccountButton extends StatelessWidget {
 
     return InkWell(
       customBorder: const CircleBorder(),
-      onTap: () async {
+      onTap: () {
         if (!auth.isSignedIn) {
-          await Navigator.of(context).push<bool>(
+          Navigator.of(context).push<bool>(
             MaterialPageRoute(builder: (_) => AuthScreen(auth: auth)),
           );
           return;
         }
-        final signOut = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(auth.user?.fullName.isNotEmpty == true
-                ? auth.user!.fullName
-                : auth.user?.phone ?? 'Signed in'),
-            content: const Text('Sign out of this device?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Sign out'),
-              ),
-            ],
-          ),
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => AccountScreen(auth: auth)),
         );
-        if (signOut == true) await auth.signOut();
       },
       child: CircleAvatar(
         radius: 18,

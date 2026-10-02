@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/auth_repository.dart';
 import '../theme/app_colors.dart';
+import 'forgot_password_screen.dart';
 
 /// Sign in or sign up. Shown only when something actually needs an account -
 /// never as a wall in front of the app.
@@ -168,6 +169,23 @@ class _AuthScreenState extends State<AuthScreen> {
                   _serverError('password') ??
                   ((v == null || v.length < 6) ? 'At least 6 characters.' : null),
             ),
+            if (!_registering)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ForgotPasswordScreen(
+                                auth: widget.auth,
+                                initialPhone: _phone.text,
+                              ),
+                            ),
+                          ),
+                  child: const Text('Forgot password?', style: TextStyle(fontSize: 13)),
+                ),
+              ),
             const SizedBox(height: 8),
             SizedBox(
               height: 50,

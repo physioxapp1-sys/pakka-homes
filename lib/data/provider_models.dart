@@ -20,6 +20,12 @@ class ServiceProvider {
     this.isAvailable = false,
     this.isVerified = false,
     this.categorySlugs = const [],
+    this.facebookUrl = '',
+    this.whatsappNumber = '',
+    this.managerSlug,
+    this.jobsCompleted = 0,
+    this.totalEarned = 0,
+    this.subcategoriesWorked = const [],
   });
 
   final int id;
@@ -43,6 +49,21 @@ class ServiceProvider {
   final bool isVerified;
   final List<String> categorySlugs;
 
+  /// Another number/page to reach them on - not a login, see facebook_url
+  /// on the backend's Provider model.
+  final String facebookUrl;
+  final String whatsappNumber;
+
+  /// The contractor this worker reports to, if any - null for a contractor
+  /// (or anyone else with nobody above them).
+  final String? managerSlug;
+
+  /// Real history, computed from this provider's own completed Bookings -
+  /// never a self-reported number. See ProviderViewSet on the backend.
+  final int jobsCompleted;
+  final double totalEarned;
+  final List<String> subcategoriesWorked;
+
   bool get isQuoteOnly => rate == null;
 
   factory ServiceProvider.fromJson(Map<String, dynamic> json) => ServiceProvider(
@@ -64,6 +85,14 @@ class ServiceProvider {
         isAvailable: json['is_available'] as bool? ?? false,
         isVerified: json['is_verified'] as bool? ?? false,
         categorySlugs: (json['category_slugs'] as List<dynamic>? ?? [])
+            .map((e) => '$e')
+            .toList(),
+        facebookUrl: json['facebook_url'] as String? ?? '',
+        whatsappNumber: json['whatsapp_number'] as String? ?? '',
+        managerSlug: json['manager_slug'] as String?,
+        jobsCompleted: json['jobs_completed'] as int? ?? 0,
+        totalEarned: _toDouble(json['total_earned']) ?? 0,
+        subcategoriesWorked: (json['subcategories_worked'] as List<dynamic>? ?? [])
             .map((e) => '$e')
             .toList(),
       );

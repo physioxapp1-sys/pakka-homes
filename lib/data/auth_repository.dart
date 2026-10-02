@@ -67,6 +67,45 @@ class AuthRepository extends ChangeNotifier {
   Future<AuthUser> login({required String phone, required String password}) =>
       _authenticate('/auth/login/', {'phone': phone, 'password': password});
 
+  /// Always succeeds from the caller's point of view - the backend answers
+  /// the same way whether or not the number has an account, so this can't
+  /// be used to probe which phone numbers are registered.
+  Future<String> requestPasswordReset(String phone) async {
+    final response =
+        await _api.post('/auth/password/forgot/', {'phone': phone}) as Map<String, dynamic>;
+    return response['detail'] as String? ??
+        'If that phone number has an account, a reset code has been sent to it.';
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) =>
+      _api.post('/auth/password/reset/', {
+        'phone': phone,
+        'code': code,
+        'new_password': newPassword,
+      });
+
+  /// Closing the account for good. Requires the current password - see
+  /// DeleteAccountSerializer on the backend for why holding a valid token
+  /// isn't treated as enough on its own.
+  Future<void> deleteAccount(String password) async {
+    final token = _token;
+    if (token == null) return;
+    await _api.delete('/auth/me/', body: {'password': password}, token: token);
+
+    _token = null;
+    _user = null;
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_phoneKey);
+    await prefs.remove(_nameKey);
+  }
+
   Future<void> signOut() async {
     final token = _token;
     _token = null;
