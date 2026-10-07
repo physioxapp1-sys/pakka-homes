@@ -10,6 +10,7 @@ class LocalCategory {
     required this.slug,
     required this.assetFolder,
     required this.imageCount,
+    this.itemLabels,
   });
 
   final String name;
@@ -27,10 +28,27 @@ class LocalCategory {
   /// How many numbered images ship for this category (1.png .. N.png).
   final int imageCount;
 
+  /// Captions for the subcategory grid, in image order.
+  ///
+  /// Null for every category whose artwork already has the name printed into
+  /// it, which is all of them bar Grocery - those are plain product photos.
+  final List<String>? itemLabels;
+
   String assetPathPrefix(String vertical) => 'assets/$vertical/$assetFolder';
 }
 
 const kServiceCategories = <LocalCategory>[
+  // Not in the spreadsheet the rest of this comes from, so the backend has no
+  // 'grocery' category to match: the rate lookup finds nothing and the grid
+  // falls back to bundled images, which is the same path as an un-imported
+  // catalog. Add it to the xlsx and re-run import_catalog to give it rates.
+  LocalCategory(
+    name: 'Grocery',
+    slug: 'grocery',
+    assetFolder: 'grocery',
+    imageCount: 4,
+    itemLabels: ['Rice', 'Potato', 'Egg', 'Gas Cylinder'],
+  ),
   LocalCategory(name: 'Construction', slug: 'construction', assetFolder: 'construction', imageCount: 12),
   LocalCategory(name: 'Electrical', slug: 'electrical', assetFolder: 'electrical', imageCount: 12),
   LocalCategory(name: 'Cleaning', slug: 'cleaning', assetFolder: 'cleaning', imageCount: 11),

@@ -54,6 +54,7 @@ Map<String, WidgetBuilder> _routesFor(
             itemCount: category.imageCount,
             vertical: vertical,
             categorySlug: category.slug,
+            itemLabels: category.itemLabels,
           ),
   };
 }
@@ -71,6 +72,7 @@ class HomeScreen extends StatelessWidget {
           itemCount: category.imageCount,
           vertical: vertical,
           categorySlug: category.slug,
+          itemLabels: category.itemLabels,
         ),
       ),
     );
@@ -256,16 +258,23 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Row(
         children: [
-          Container(
+          // The logo is already a circular mark with its own cream disc, so it
+          // needs no tile or gradient behind it.
+          Image.asset(
+            'assets/home/logo.png',
             height: 52,
             width: 52,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.orange, AppColors.darkOrange],
+            errorBuilder: (_, __, ___) => Container(
+              height: 52,
+              width: 52,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.orange, AppColors.darkOrange],
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
-              borderRadius: BorderRadius.circular(16),
+              child: const Icon(Icons.home_rounded, color: Colors.white, size: 32),
             ),
-            child: const Icon(Icons.home_rounded, color: Colors.white, size: 32),
           ),
           const SizedBox(width: 12),
           const Expanded(

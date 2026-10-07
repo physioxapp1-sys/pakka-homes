@@ -13,6 +13,7 @@ class SubcategoryScreen extends StatefulWidget {
     required this.itemCount,
     required this.vertical,
     required this.categorySlug,
+    this.itemLabels,
   });
 
   final String title;
@@ -21,6 +22,13 @@ class SubcategoryScreen extends StatefulWidget {
   /// Images are expected at '$imagePathPrefix/1.png', '.../2.png', etc.
   final String imagePathPrefix;
   final int itemCount;
+
+  /// Captions drawn under each tile, in the same order as the images.
+  ///
+  /// Most categories leave this null because their artwork has the name
+  /// printed into it. Grocery's photos are plain product shots with no text,
+  /// so those need a caption or the tile says nothing.
+  final List<String>? itemLabels;
 
   /// Backend vertical ('service' / 'shop') and category slug used to look up
   /// live rates. The bundled images render regardless.
@@ -100,6 +108,8 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
         itemBuilder: (context, index) {
           final imagePath = '${widget.imagePathPrefix}/${index + 1}.png';
           final rate = index < _remote.length ? _remote[index].displayRate : null;
+          final labels = widget.itemLabels;
+          final label = (labels != null && index < labels.length) ? labels[index] : null;
 
           return ClipRRect(
             borderRadius: BorderRadius.circular(14),
@@ -115,6 +125,21 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                         child: Image.asset(imagePath, fit: BoxFit.contain),
                       ),
                     ),
+                    if (label != null)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(8, 0, 8, rate == null ? 10 : 2),
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
                     if (rate != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
