@@ -58,8 +58,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/main icon/app_icon.png"
-  # The wall has to reach the layer's edges or a mask cuts into it, so the
-  # whole artwork is the background and the foreground is deliberately empty.
-  adaptive_icon_background: "assets/main icon/app_icon_background.png"
+  # The cream disc the logo sits on, with the mark alone in the foreground.
+  adaptive_icon_background: "#FDF4EB"
   adaptive_icon_foreground: "assets/main icon/app_icon_foreground.png"
   min_sdk_android: 21
