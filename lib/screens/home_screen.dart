@@ -58,14 +58,20 @@ void _openCategory(BuildContext context, String slug) {
 
 /// Maintenance is a grouping, not a catalog category - it fans out to the
 /// three trades underneath it.
-const _maintenanceSlugs = ['plumbing', 'electrical', 'cleaning'];
+const _maintenanceSlugs = [
+  'plumbing',
+  'electrical',
+  'cleaning',
+  'appliance-repair',
+  'waterproofing',
+];
 
 void _openMaintenance(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => CategoryScreen(
         title: 'Maintenance',
-        subtitle: 'Plumbing, electrical and cleaning',
+        subtitle: 'Repairs and upkeep for your home',
         icon: Icons.build_rounded,
         iconColor: AppColors.blue,
         items: [for (final s in _maintenanceSlugs) _category(s).name],
