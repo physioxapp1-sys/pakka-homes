@@ -165,9 +165,14 @@ class _AuthScreenState extends State<AuthScreen> {
               icon: Icons.lock_outline,
               obscure: _obscure,
               onToggleObscure: () => setState(() => _obscure = !_obscure),
+              // Stated up front when registering. The server applies Django's
+              // validators - 8 characters, not a common password, not all
+              // digits - and asking for 6 here meant people were turned away
+              // by the server for a rule the form never mentioned.
+              helperText: _registering ? 'At least 8 characters, not all numbers' : null,
               validator: (v) =>
                   _serverError('password') ??
-                  ((v == null || v.length < 6) ? 'At least 6 characters.' : null),
+                  ((v == null || v.length < 8) ? 'At least 8 characters.' : null),
             ),
             if (!_registering)
               Align(
@@ -241,6 +246,7 @@ class _AuthField extends StatelessWidget {
     this.obscure = false,
     this.onToggleObscure,
     this.textCapitalization = TextCapitalization.none,
+    this.helperText,
   });
 
   final TextEditingController controller;
@@ -251,6 +257,7 @@ class _AuthField extends StatelessWidget {
   final bool obscure;
   final VoidCallback? onToggleObscure;
   final TextCapitalization textCapitalization;
+  final String? helperText;
 
   @override
   Widget build(BuildContext context) {
@@ -264,6 +271,7 @@ class _AuthField extends StatelessWidget {
         textCapitalization: textCapitalization,
         decoration: InputDecoration(
           labelText: label,
+          helperText: helperText,
           prefixIcon: Icon(icon, size: 20),
           suffixIcon: onToggleObscure == null
               ? null

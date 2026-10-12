@@ -385,11 +385,12 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(27),
-      // Its own 2.83:1 rather than the mock's fixed 205pt: at that height
-      // cover crops 39% of the width, which loses the worker and the house
-      // and leaves only the headline over empty hills.
-      child: AspectRatio(
-        aspectRatio: 1280 / 452,
+      // The mock's 205pt works now. The banner is 1.63:1 against the slot's
+      // ~1.71:1, so cover trims a sliver of height and nothing else - the
+      // previous photo was 2.83:1 and lost 39% of its width here.
+      child: SizedBox(
+        width: double.infinity,
+        height: 205,
         child: Image.asset(
           'assets/home/hero.jpg',
           fit: BoxFit.cover,
