@@ -129,6 +129,27 @@ assert not [s for s in Subcategory.objects.all() if len(s.name) > lim]
 
 ---
 
+## A tile shows a placeholder, or the wrong rate under a picture
+
+**Cause: the picture is not on the server, or the row it belongs to changed.**
+
+Tiles come from `/subcategories/` now — one row is one tile, carrying its own
+name, rate and image URL. A grey placeholder means that row has no image:
+upload one on the subcategory in Django admin, or run `import_catalog_images`
+if it has never been run on this server.
+
+It used to work the other way: the app shipped numbered images and paired tile
+N with the Nth row from the API. That drifted the moment anyone touched the
+catalog, and it had — grocery was showing Rice's rate under Vegetables &
+Fruits. If you see a mismatch like that again, it is **not** this bug; it means
+the image attached to that row is genuinely the wrong file. Re-run with
+`--replace`.
+
+An empty category means the API returned no subcategories for that slug — check
+the category exists and its rows are active in admin.
+
+---
+
 ## Deploying
 
 ```bash
@@ -136,9 +157,20 @@ cd ~/dhaubanjar-nirman-sewa
 git pull
 ~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py migrate
 ~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_catalog
+~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_catalog_images
+~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py seed_products
+~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_product_images
 ~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py seed_providers
 touch tmp/restart.txt      # Passenger reloads on mtime change
 ```
+
+All of these are safe to re-run: they update what changed and leave the rest
+alone. The two image commands skip anything that already has a picture unless
+passed `--replace`.
+
+`import_catalog_images` is not optional any more. The app no longer ships tile
+images — it draws whatever the API serves — so until this has run, every
+subcategory tile shows a placeholder.
 
 `import_catalog` needs no path: it defaults to `catalog/data/catalog.xlsx`,
 vendored in the backend repo. That copy is **not** the app's spreadsheet — when
