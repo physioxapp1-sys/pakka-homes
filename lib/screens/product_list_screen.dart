@@ -465,10 +465,16 @@ class _OffBadge extends StatelessWidget {
 /// Server image when there is one, otherwise a tinted basket - products are
 /// entered in the admin and a photo may not be uploaded yet.
 class ProductImage extends StatelessWidget {
-  const ProductImage({super.key, required this.product, required this.size});
+  const ProductImage({
+    super.key,
+    required this.product,
+    required this.size,
+    this.fit = BoxFit.cover,
+  });
 
   final Product product;
   final double size;
+  final BoxFit fit;
 
   @override
   Widget build(BuildContext context) {
@@ -490,7 +496,7 @@ class ProductImage extends StatelessWidget {
         product.imageUrl!,
         width: size,
         height: size,
-        fit: BoxFit.cover,
+        fit: fit,
         errorBuilder: (_, __, ___) => fallback,
       ),
     );

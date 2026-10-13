@@ -39,7 +39,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   Container(
                     color: AppColors.tileGreen,
-                    child: ProductImage(product: product, size: double.infinity),
+                    padding: const EdgeInsets.all(16),
+                    // contain, not cover: product shots are square cut-outs and
+                    // cover would crop a third off a square in this 1.5:1 box.
+                    child: ProductImage(
+                      product: product,
+                      size: double.infinity,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   if (product.isDiscounted)
                     Positioned(
