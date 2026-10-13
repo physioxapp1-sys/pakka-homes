@@ -39,10 +39,17 @@ JSON means that client is allowed. `<!DOCTYPE html>` means it is being
 challenged. When last tested only `curl/*` passed — a real Chrome Android
 agent was challenged too, so this is an allowlist, not a browser check.
 
-**The fix is server-side.** Ask the host to disable LiteSpeed's reCAPTCHA /
-anti-bot for this domain, or to allowlist the app's User-Agent
-(`PakkaHomes/1.0 (Android)`, set in `lib/data/api_client.dart`). It is usually
-a WHM-level setting, so a cPanel-only account cannot change it alone.
+**The fix is server-side, and it worked.** The reCAPTCHA / anti-bot filter
+was disabled for this domain (October 2026) and sign-up and sign-in started
+working immediately, with no app change. The alternative is to allowlist the
+app's User-Agent (`PakkaHomes/1.0 (Android)`, set in
+`lib/data/api_client.dart`). It is usually a WHM-level setting, so a
+cPanel-only account cannot change it alone.
+
+If this ever comes back — a host re-enables the filter, or it is turned on for
+a new subdomain — the symptom is the same *"server returned a web page"*
+message, and the `curl` loop above is the quickest way to confirm it before
+touching any code. Nothing in the app needs changing.
 
 Do **not** make the app pretend to be `curl` to slip past. It would work today
 and break the moment the rule changes, and it defeats a protection that is
