@@ -4,6 +4,7 @@ import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
 import '../theme/app_colors.dart';
 import 'booking_screen.dart';
+import 'product_list_screen.dart';
 
 class SubcategoryScreen extends StatefulWidget {
   const SubcategoryScreen({
@@ -14,6 +15,8 @@ class SubcategoryScreen extends StatefulWidget {
     required this.vertical,
     required this.categorySlug,
     this.itemLabels,
+    this.itemSlugs,
+    this.sellsProducts = false,
   });
 
   final String title;
@@ -29,6 +32,12 @@ class SubcategoryScreen extends StatefulWidget {
   /// printed into it. Grocery's photos are plain product shots with no text,
   /// so those need a caption or the tile says nothing.
   final List<String>? itemLabels;
+
+  /// Backend slugs for the tiles, in image order.
+  final List<String>? itemSlugs;
+
+  /// Grocery aisles hold products to buy, not services to book.
+  final bool sellsProducts;
 
   /// Backend vertical ('service' / 'shop') and category slug used to look up
   /// live rates. The bundled images render regardless.
@@ -70,9 +79,30 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
     }
   }
 
-  /// Straight to booking - the customer books Pakka Homes and we assign
-  /// someone. Picking an individual is deliberately not part of the flow.
+  /// Grocery aisles open a product list; everything else is a service and
+  /// goes straight to booking, where Pakka Homes assigns someone.
   void _book(int index) {
+    if (widget.sellsProducts) {
+      final labels = widget.itemLabels;
+      final slugs = widget.itemSlugs;
+      final slug = (slugs != null && index < slugs.length)
+          ? slugs[index]
+          : (index < _remote.length ? _remote[index].slug : null);
+      if (slug != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ProductListScreen(
+              title: (labels != null && index < labels.length)
+                  ? labels[index]
+                  : widget.title,
+              subcategorySlug: slug,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final remote = index < _remote.length ? _remote[index] : null;
     Navigator.of(context).push(
       MaterialPageRoute(

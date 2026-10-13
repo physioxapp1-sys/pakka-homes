@@ -51,6 +51,8 @@ void _openCategory(BuildContext context, String slug) {
         vertical: CatalogRepository.serviceVertical,
         categorySlug: category.slug,
         itemLabels: category.itemLabels,
+        itemSlugs: category.itemSlugs,
+        sellsProducts: category.sellsProducts,
       ),
     ),
   );
@@ -84,6 +86,8 @@ void _openMaintenance(BuildContext context) {
                   vertical: CatalogRepository.serviceVertical,
                   categorySlug: _category(s).slug,
                   itemLabels: _category(s).itemLabels,
+                  itemSlugs: _category(s).itemSlugs,
+                  sellsProducts: _category(s).sellsProducts,
                 ),
         },
       ),

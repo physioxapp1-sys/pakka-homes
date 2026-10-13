@@ -11,6 +11,8 @@ class LocalCategory {
     required this.assetFolder,
     required this.imageCount,
     this.itemLabels,
+    this.itemSlugs,
+    this.sellsProducts = false,
   });
 
   final String name;
@@ -34,6 +36,15 @@ class LocalCategory {
   /// it, which is all of them bar Grocery - those are plain product photos.
   final List<String>? itemLabels;
 
+  /// Backend slugs for the entries above, in the same order. Needed because a
+  /// section can be opened before the catalog request returns, and the product
+  /// list is queried by slug.
+  final List<String>? itemSlugs;
+
+  /// True where the entries are aisles of products rather than services to
+  /// book - Grocery. Changes what tapping one does.
+  final bool sellsProducts;
+
   String assetPathPrefix(String vertical) => 'assets/$vertical/$assetFolder';
 }
 
@@ -47,7 +58,9 @@ const kServiceCategories = <LocalCategory>[
     slug: 'grocery',
     assetFolder: 'grocery',
     imageCount: 4,
-    itemLabels: ['Rice', 'Potato', 'Egg', 'Gas Cylinder'],
+    itemLabels: ['Vegetables & Fruits', 'Rice & Grains', 'Dairy & Eggs', 'Gas & Fuel'],
+    itemSlugs: ['vegetables-fruits', 'rice-grains', 'dairy-eggs', 'gas-fuel'],
+    sellsProducts: true,
   ),
   LocalCategory(name: 'Construction', slug: 'construction', assetFolder: 'construction', imageCount: 12),
   LocalCategory(name: 'Electrical', slug: 'electrical', assetFolder: 'electrical', imageCount: 12),
