@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/auth_scope.dart';
 import '../data/catalog_repository.dart';
 import '../data/local_catalog.dart';
+import '../data/nepali_date.dart';
 import '../theme/app_colors.dart';
 import 'account_screen.dart';
 import 'auth_screen.dart';
@@ -387,6 +388,10 @@ class _Banner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Null outside the calendar table, which is 2000-2090 BS. Then the banner
+    // simply carries no date rather than a wrong one.
+    final today = NepaliDate.today();
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(27),
       // The mock's 205pt works now. The banner is 1.63:1 against the slot's
@@ -395,22 +400,88 @@ class _Banner extends StatelessWidget {
       child: SizedBox(
         width: double.infinity,
         height: 205,
-        child: Image.asset(
-          'assets/home/hero.jpg',
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFBFE3F4), Color(0xFF8DC5A1), Color(0xFF447D55)],
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/home/hero.jpg',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFFBFE3F4),
+                        Color(0xFF8DC5A1),
+                        Color(0xFF447D55)
+                      ],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.house_rounded,
+                        size: 110, color: Color(0xFFFFE0A4)),
+                  ),
+                ),
               ),
             ),
-            child: const Center(
-              child: Icon(Icons.house_rounded, size: 110, color: Color(0xFFFFE0A4)),
-            ),
-          ),
+            // Top right: the sky is palest there, so the pill stays legible
+            // without covering the peak or the house.
+            if (today != null)
+              Positioned(top: 14, right: 14, child: _DatePill(date: today)),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// Today in Bikram Sambat, which is the calendar the date is actually read in
+/// here. The Gregorian date is left to the phone's own status bar.
+class _DatePill extends StatelessWidget {
+  const _DatePill({required this.date});
+
+  final NepaliDate date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 7, 14, 7),
+      decoration: BoxDecoration(
+        // Translucent rather than solid: the sky still shows through, so the
+        // pill sits on the photo instead of punching a hole in it.
+        color: AppColors.navy.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                date.formatted,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.15,
+                ),
+              ),
+              Text(
+                date.weekdayName,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: Colors.white.withValues(alpha: 0.82),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
