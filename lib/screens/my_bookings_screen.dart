@@ -13,7 +13,11 @@ import 'auth_screen.dart';
 /// is a reference + phone lookup alongside the sign-in offer. Otherwise
 /// someone who booked without an account could never see it again.
 class MyBookingsScreen extends StatefulWidget {
-  const MyBookingsScreen({super.key});
+  const MyBookingsScreen({super.key, this.embedded = false});
+
+  /// Inside the Orders tab this is one page of a TabBarView, so it drops its
+  /// own Scaffold and AppBar rather than stacking a second title bar.
+  final bool embedded;
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -80,6 +84,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     final signedIn = AuthScope.of(context).isSignedIn;
+    final body =
+        signedIn ? _signedInBody() : _GuestBody(onSignIn: _signIn, repository: _repository);
+    if (widget.embedded) return body;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -88,7 +95,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         foregroundColor: AppColors.textPrimary,
         title: const Text('My bookings'),
       ),
-      body: signedIn ? _signedInBody() : _GuestBody(onSignIn: _signIn, repository: _repository),
+      body: body,
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/cart.dart';
 import '../data/product_models.dart';
 import '../theme/app_colors.dart';
+import 'checkout_screen.dart';
 import 'product_list_screen.dart' show ProductImage, QuantityStepper;
 
 class CartScreen extends StatelessWidget {
@@ -292,13 +293,10 @@ class _CheckoutBar extends StatelessWidget {
         child: SizedBox(
           height: 52,
           child: ElevatedButton(
-            // Checkout needs delivery addresses, time slots and an order
-            // endpoint, none of which exist yet - so it says so rather than
-            // taking someone through a flow that cannot finish.
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Checkout is coming next - your cart is saved.'),
-              ),
+            // Checkout is open to guests - signing in only saves typing the
+            // address again, so it is not a gate.
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CheckoutScreen()),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.green,

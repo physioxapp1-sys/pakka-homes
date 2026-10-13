@@ -7,7 +7,7 @@ import '../theme/app_colors.dart';
 import 'account_screen.dart';
 import 'auth_screen.dart';
 import 'category_screen.dart';
-import 'my_bookings_screen.dart';
+import 'my_orders_screen.dart';
 import 'subcategory_screen.dart';
 
 /// What the four service tiles offer.
@@ -152,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _HomeTab(onViewAll: () => _goToTab(1)),
             const _CategoriesTab(),
-            const MyBookingsScreen(),
+            const MyOrdersScreen(),
             const _AccountTab(),
           ],
         ),
