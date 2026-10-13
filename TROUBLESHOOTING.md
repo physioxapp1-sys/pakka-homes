@@ -150,6 +150,45 @@ the category exists and its rows are active in admin.
 
 ---
 
+## A Django admin list page 500s, but only once it has rows
+
+**Cause: MySQL here has no time zone tables, and something asked it to convert
+one.**
+
+With `USE_TZ = True` and `TIME_ZONE = Asia/Kathmandu`, Django pushes the
+conversion into SQL as `CONVERT_TZ(created_at, 'UTC', 'Asia/Kathmandu')`.
+Shared hosting rarely has those tables loaded, so it returns `NULL` and Django
+raises *"Database returned an invalid datetime value. Are time zone definitions
+for your database installed?"*
+
+It hides until the table has rows: the admin only asks for the date range when
+there is something to range over. The orders changelist worked fine until the
+first order arrived.
+
+Check it in one line:
+
+```bash
+$PY manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute(\"SELECT CONVERT_TZ('2026-01-01 00:00:00','UTC','Asia/Kathmandu')\"); print(c.fetchone()[0])"
+```
+
+`None` means the tables are missing. Loading them needs `mysql_tzinfo_to_sql`
+as MySQL root, which a cPanel account cannot run — so **avoid the features that
+need it** rather than trying to fix the database:
+
+| Avoid | Use instead |
+|---|---|
+| `date_hierarchy` on a `DateTimeField` | `created_at` in `list_filter` — today / this week / this month, no conversion |
+| `created_at__date=...` | `created_at__gte=... , created_at__lt=...` |
+| `.dates()`, `.datetimes()`, `TruncDate`, `TruncMonth` | aggregate in Python, or store a plain `DateField` |
+
+`created_at__year=` is fine — it compiles to a plain range.
+
+To see which side of the line a query falls on, compile it against the MySQL
+backend and look for `CONVERT_TZ` in the SQL; it does not need a live
+connection, only `pymysql.install_as_MySQLdb()`.
+
+---
+
 ## Deploying
 
 ```bash
