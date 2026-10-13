@@ -24,12 +24,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final cart = CartScope.of(context);
     final inCart = cart.quantityOf(product);
 
+    // Product shots are square. A 1.5:1 banner either left bars down both
+    // sides of a photo or cropped a third off it, so the banner is the shape
+    // of the picture instead. Capped so a tablet does not open on a hero and
+    // nothing else.
+    final width = MediaQuery.sizeOf(context).width;
+    final heroHeight = width > 420 ? 420.0 : width;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 260,
+            expandedHeight: heroHeight,
             pinned: true,
             backgroundColor: Colors.white,
             foregroundColor: AppColors.navy,
@@ -38,14 +45,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   Container(
+                    // The backdrop a cut-out sits on. A photo covers it
+                    // entirely; a PNG with transparency shows it around the
+                    // product.
                     color: AppColors.tileGreen,
-                    padding: const EdgeInsets.all(16),
-                    // contain, not cover: product shots are square cut-outs and
-                    // cover would crop a third off a square in this 1.5:1 box.
                     child: ProductImage(
                       product: product,
                       size: double.infinity,
-                      fit: BoxFit.contain,
+                      fit: BoxFit.cover,
+                      borderRadius: 0,
                     ),
                   ),
                   if (product.isDiscounted)

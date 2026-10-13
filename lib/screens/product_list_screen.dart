@@ -470,11 +470,16 @@ class ProductImage extends StatelessWidget {
     required this.product,
     required this.size,
     this.fit = BoxFit.cover,
+    this.borderRadius = 12,
   });
 
   final Product product;
   final double size;
   final BoxFit fit;
+
+  /// Zero for a full-bleed hero, where rounded corners would cut the photo
+  /// away from the edges it is meant to reach.
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -483,7 +488,7 @@ class ProductImage extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AppColors.tileGreen,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Icon(Icons.shopping_basket_rounded,
           size: size * 0.45, color: AppColors.green),
@@ -491,7 +496,7 @@ class ProductImage extends StatelessWidget {
 
     if (product.imageUrl == null) return fallback;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: Image.network(
         product.imageUrl!,
         width: size,
