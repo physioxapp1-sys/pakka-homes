@@ -36,3 +36,6 @@ android/key.properties
 # Python (helper scripts)
 __pycache__/
 *.pyc
+
+# Work in progress: 2 of 13 rental categories, zips not extracted
+assets/rentals/
