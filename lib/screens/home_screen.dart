@@ -47,12 +47,8 @@ void _openCategory(BuildContext context, String slug) {
     MaterialPageRoute(
       builder: (_) => SubcategoryScreen(
         title: category.name,
-        imagePathPrefix: category.assetPathPrefix('services'),
-        itemCount: category.imageCount,
         vertical: CatalogRepository.serviceVertical,
         categorySlug: category.slug,
-        itemLabels: category.itemLabels,
-        itemSlugs: category.itemSlugs,
         sellsProducts: category.sellsProducts,
       ),
     ),
@@ -82,12 +78,8 @@ void _openMaintenance(BuildContext context) {
           for (final s in _maintenanceSlugs)
             _category(s).name: (_) => SubcategoryScreen(
                   title: _category(s).name,
-                  imagePathPrefix: _category(s).assetPathPrefix('services'),
-                  itemCount: _category(s).imageCount,
                   vertical: CatalogRepository.serviceVertical,
                   categorySlug: _category(s).slug,
-                  itemLabels: _category(s).itemLabels,
-                  itemSlugs: _category(s).itemSlugs,
                   sellsProducts: _category(s).sellsProducts,
                 ),
         },

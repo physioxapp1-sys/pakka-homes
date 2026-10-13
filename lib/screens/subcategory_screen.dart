@@ -1,48 +1,39 @@
 import 'package:flutter/material.dart';
 
+import '../data/api_client.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
 import '../theme/app_colors.dart';
 import 'booking_screen.dart';
 import 'product_list_screen.dart';
 
+/// What sits under a category: the trades you can book, or the aisles you can
+/// shop.
+///
+/// Everything here comes from the API - the tiles, their pictures, their names
+/// and their rates, as one row each. It used to draw a fixed number of tiles
+/// from images shipped in the app and then pair tile N with the Nth row from
+/// the server. That pairing broke the moment anyone added or reordered a
+/// subcategory in admin, and it had: grocery was showing Rice's rate under
+/// Vegetables & Fruits. A row carries its own picture now, so there is nothing
+/// left to line up.
 class SubcategoryScreen extends StatefulWidget {
   const SubcategoryScreen({
     super.key,
     required this.title,
-    required this.imagePathPrefix,
-    required this.itemCount,
     required this.vertical,
     required this.categorySlug,
-    this.itemLabels,
-    this.itemSlugs,
     this.sellsProducts = false,
   });
 
   final String title;
 
-  /// Base asset path for this category's images, e.g. 'assets/services/mason'.
-  /// Images are expected at '$imagePathPrefix/1.png', '.../2.png', etc.
-  final String imagePathPrefix;
-  final int itemCount;
-
-  /// Captions drawn under each tile, in the same order as the images.
-  ///
-  /// Most categories leave this null because their artwork has the name
-  /// printed into it. Grocery's photos are plain product shots with no text,
-  /// so those need a caption or the tile says nothing.
-  final List<String>? itemLabels;
-
-  /// Backend slugs for the tiles, in image order.
-  final List<String>? itemSlugs;
+  /// Backend vertical ('service' / 'shop' / 'rental') and category slug.
+  final String vertical;
+  final String categorySlug;
 
   /// Grocery aisles hold products to buy, not services to book.
   final bool sellsProducts;
-
-  /// Backend vertical ('service' / 'shop') and category slug used to look up
-  /// live rates. The bundled images render regardless.
-  final String vertical;
-  final String categorySlug;
 
   @override
   State<SubcategoryScreen> createState() => _SubcategoryScreenState();
@@ -51,14 +42,13 @@ class SubcategoryScreen extends StatefulWidget {
 class _SubcategoryScreenState extends State<SubcategoryScreen> {
   final _repository = CatalogRepository();
 
-  /// Server rows, positionally aligned with the bundled images. Empty until
-  /// (and unless) the catalog has been imported on the backend.
-  List<RemoteSubcategory> _remote = const [];
+  List<RemoteSubcategory>? _rows;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadRates();
+    _load();
   }
 
   @override
@@ -67,51 +57,37 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
     super.dispose();
   }
 
-  Future<void> _loadRates() async {
+  Future<void> _load() async {
+    setState(() => _error = null);
     try {
       final rows = await _repository.subcategories(
         vertical: widget.vertical,
         categorySlug: widget.categorySlug,
       );
-      if (mounted) setState(() => _remote = rows);
-    } catch (_) {
-      // Offline or catalog not imported yet - the bundled grid still works.
+      if (mounted) setState(() => _rows = rows);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _rows = const [];
+          _error = e.message;
+        });
+      }
     }
   }
 
-  /// Grocery aisles open a product list; everything else is a service and
-  /// goes straight to booking, where Pakka Homes assigns someone.
-  void _book(int index) {
-    if (widget.sellsProducts) {
-      final labels = widget.itemLabels;
-      final slugs = widget.itemSlugs;
-      final slug = (slugs != null && index < slugs.length)
-          ? slugs[index]
-          : (index < _remote.length ? _remote[index].slug : null);
-      if (slug != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ProductListScreen(
-              title: (labels != null && index < labels.length)
-                  ? labels[index]
-                  : widget.title,
-              subcategorySlug: slug,
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    final remote = index < _remote.length ? _remote[index] : null;
+  /// Aisles open a product list; everything else is a service and goes to
+  /// booking, where Pakka Homes assigns someone.
+  void _open(RemoteSubcategory row) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BookingScreen(
-          title: remote?.name ?? widget.title,
-          categorySlug: widget.categorySlug,
-          subcategorySlug: remote?.slug,
-          priceLabel: remote?.displayRate,
-        ),
+        builder: (_) => widget.sellsProducts
+            ? ProductListScreen(title: row.name, subcategorySlug: row.slug)
+            : BookingScreen(
+                title: row.name,
+                categorySlug: widget.categorySlug,
+                subcategorySlug: row.slug,
+                priceLabel: row.displayRate,
+              ),
       ),
     );
   }
@@ -126,7 +102,22 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
         foregroundColor: AppColors.textPrimary,
         title: Text(widget.title),
       ),
-      body: GridView.builder(
+      body: _body(),
+    );
+  }
+
+  Widget _body() {
+    final rows = _rows;
+    if (rows == null) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.green));
+    }
+    if (rows.isEmpty) {
+      return _Empty(message: _error, onRetry: _load);
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.green,
+      child: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
@@ -134,63 +125,147 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
           mainAxisSpacing: 16,
           childAspectRatio: 0.95,
         ),
-        itemCount: widget.itemCount,
-        itemBuilder: (context, index) {
-          final imagePath = '${widget.imagePathPrefix}/${index + 1}.png';
-          final rate = index < _remote.length ? _remote[index].displayRate : null;
-          final labels = widget.itemLabels;
-          final label = (labels != null && index < labels.length) ? labels[index] : null;
+        itemCount: rows.length,
+        itemBuilder: (_, i) => _Tile(row: rows[i], onTap: () => _open(rows[i])),
+      ),
+    );
+  }
+}
 
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Material(
-              color: Colors.white,
-              child: InkWell(
-                onTap: () => _book(index),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Image.asset(imagePath, fit: BoxFit.contain),
-                      ),
-                    ),
-                    if (label != null)
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(8, 0, 8, rate == null ? 10 : 2),
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    if (rate != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                        child: Text(
-                          rate,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                  ],
+class _Tile extends StatelessWidget {
+  const _Tile({required this.row, required this.onTap});
+
+  final RemoteSubcategory row;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: _TileImage(url: row.imageUrl),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+                child: Text(
+                  row.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: Text(
+                  row.displayRate,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TileImage extends StatelessWidget {
+  const _TileImage({required this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    // A row with no picture uploaded yet, and anything that fails to load,
+    // land on the same placeholder rather than an empty box or a broken icon.
+    final placeholder = Container(
+      decoration: BoxDecoration(
+        color: AppColors.tileGreen,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Center(
+        child: Icon(Icons.handyman_rounded, size: 34, color: AppColors.green),
+      ),
+    );
+
+    if (url == null || url!.isEmpty) return placeholder;
+    return Image.network(
+      url!,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => placeholder,
+      loadingBuilder: (context, child, progress) => progress == null
+          ? child
+          : Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F6FA),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-          );
-        },
+    );
+  }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty({required this.message, required this.onRetry});
+
+  /// Null means the request worked and the category genuinely has nothing in
+  /// it - worth saying differently from a failed request.
+  final String? message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              message == null ? Icons.inbox_outlined : Icons.wifi_off_rounded,
+              size: 46,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message ?? 'Nothing listed here yet.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: onRetry,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+              ),
+              child: const Text('Try again'),
+            ),
+          ],
+        ),
       ),
     );
   }

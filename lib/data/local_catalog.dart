@@ -1,91 +1,41 @@
-/// The catalog bundled with the app.
+/// The categories the home screen offers, and what tapping one means.
 ///
-/// This is what renders before (or instead of) a successful API call, so the
-/// app is fully usable offline and on first launch. The server is the source
-/// of truth for names, rates and ordering; `assetFolder` is the join key —
-/// it matches `Category.image_key` on the backend.
+/// Only the grouping lives here. Everything inside a category - the tiles,
+/// their pictures, names and rates - comes from the API, so adding a trade in
+/// admin shows up without an app release. This list is the one thing that
+/// does not: which categories get a tile on the home screen is a design
+/// decision, not catalog data, and the home screen only offers four of the
+/// eleven the backend carries.
 class LocalCategory {
   const LocalCategory({
     required this.name,
     required this.slug,
-    required this.assetFolder,
-    required this.imageCount,
-    this.itemLabels,
-    this.itemSlugs,
     this.sellsProducts = false,
   });
 
+  /// The label on the tile. The backend has its own name for the same row and
+  /// is free to differ - the shop sheet says "Sanitary Ware" where the app
+  /// says "Sanitaryware" - so this is what the customer sees on the way in.
   final String name;
 
-  /// The backend's slug for this category, which it derives from the name in
-  /// the spreadsheet. Those names are not always the app's label — the shop
-  /// sheet says "Sanitary Ware" where the app says "Sanitaryware" — so this is
-  /// stored explicitly rather than slugified from `name`.
+  /// The backend's slug for the category, which is what the API is queried by.
   final String slug;
 
-  /// Folder under assets/<vertical>/ holding this category's numbered images,
-  /// and the value the backend stores in Category.image_key.
-  final String assetFolder;
-
-  /// How many numbered images ship for this category (1.png .. N.png).
-  final int imageCount;
-
-  /// Captions for the subcategory grid, in image order.
-  ///
-  /// Null for every category whose artwork already has the name printed into
-  /// it, which is all of them bar Grocery - those are plain product photos.
-  final List<String>? itemLabels;
-
-  /// Backend slugs for the entries above, in the same order. Needed because a
-  /// section can be opened before the catalog request returns, and the product
-  /// list is queried by slug.
-  final List<String>? itemSlugs;
-
-  /// True where the entries are aisles of products rather than services to
-  /// book - Grocery. Changes what tapping one does.
+  /// True where the entries are aisles of products to buy rather than services
+  /// to book. Changes what tapping one does.
   final bool sellsProducts;
-
-  String assetPathPrefix(String vertical) => 'assets/$vertical/$assetFolder';
 }
 
 const kServiceCategories = <LocalCategory>[
-  // Not in the spreadsheet the rest of this comes from, so the backend has no
-  // 'grocery' category to match: the rate lookup finds nothing and the grid
-  // falls back to bundled images, which is the same path as an un-imported
-  // catalog. Add it to the xlsx and re-run import_catalog to give it rates.
-  LocalCategory(
-    name: 'Grocery',
-    slug: 'grocery',
-    assetFolder: 'grocery',
-    imageCount: 4,
-    itemLabels: ['Vegetables & Fruits', 'Rice & Grains', 'Dairy & Eggs', 'Gas & Fuel'],
-    itemSlugs: ['vegetables-fruits', 'rice-grains', 'dairy-eggs', 'gas-fuel'],
-    sellsProducts: true,
-  ),
-  LocalCategory(name: 'Construction', slug: 'construction', assetFolder: 'construction', imageCount: 12),
-  LocalCategory(name: 'Electrical', slug: 'electrical', assetFolder: 'electrical', imageCount: 12),
-  LocalCategory(name: 'Cleaning', slug: 'cleaning', assetFolder: 'cleaning', imageCount: 11),
-  LocalCategory(name: 'Mason', slug: 'mason', assetFolder: 'mason', imageCount: 11),
-  LocalCategory(name: 'Appliance Repair', slug: 'appliance-repair', assetFolder: 'appliance-repair', imageCount: 12),
-  LocalCategory(name: 'Plumbing', slug: 'plumbing', assetFolder: 'plumbing', imageCount: 12),
-  LocalCategory(name: 'Painting', slug: 'painting', assetFolder: 'painting', imageCount: 10),
-  LocalCategory(name: 'Carpenter', slug: 'carpenter', assetFolder: 'carpenter', imageCount: 11),
-  LocalCategory(name: 'Waterproofing', slug: 'waterproofing', assetFolder: 'waterproofing', imageCount: 10),
-  LocalCategory(name: 'Interior', slug: 'interior', assetFolder: 'interior', imageCount: 16),
-];
-
-const kShopCategories = <LocalCategory>[
-  LocalCategory(name: 'Cement', slug: 'cement', assetFolder: 'cement', imageCount: 6),
-  LocalCategory(name: 'Electrical', slug: 'electrical', assetFolder: 'electricals', imageCount: 12),
-  LocalCategory(name: 'Sanitaryware', slug: 'sanitary-ware', assetFolder: 'sanitaryware', imageCount: 15),
-  LocalCategory(name: 'Tools', slug: 'tools', assetFolder: 'tools', imageCount: 12),
-  LocalCategory(name: 'Steel', slug: 'steel', assetFolder: 'steel', imageCount: 13),
-  LocalCategory(name: 'Paint', slug: 'paint', assetFolder: 'paint', imageCount: 12),
-  LocalCategory(name: 'Hardware', slug: 'hardware', assetFolder: 'hardware', imageCount: 18),
-  LocalCategory(name: 'Water Tanks', slug: 'water-tanks', assetFolder: 'watertanks', imageCount: 10),
-  LocalCategory(name: 'Plumbing Materials', slug: 'plumbing-materials', assetFolder: 'plumbing', imageCount: 10),
-  LocalCategory(name: 'Tiles', slug: 'tiles', assetFolder: 'tiles', imageCount: 9),
-  LocalCategory(name: 'Roofing', slug: 'roofing', assetFolder: 'roofing', imageCount: 8),
-  LocalCategory(name: 'Construction Chemicals', slug: 'construction-chemicals', assetFolder: 'construction-chemicals', imageCount: 8),
-  LocalCategory(name: 'Safety', slug: 'safety', assetFolder: 'safety', imageCount: 7),
+  LocalCategory(name: 'Grocery', slug: 'grocery', sellsProducts: true),
+  LocalCategory(name: 'Construction', slug: 'construction'),
+  LocalCategory(name: 'Electrical', slug: 'electrical'),
+  LocalCategory(name: 'Cleaning', slug: 'cleaning'),
+  LocalCategory(name: 'Mason', slug: 'mason'),
+  LocalCategory(name: 'Appliance Repair', slug: 'appliance-repair'),
+  LocalCategory(name: 'Plumbing', slug: 'plumbing'),
+  LocalCategory(name: 'Painting', slug: 'painting'),
+  LocalCategory(name: 'Carpenter', slug: 'carpenter'),
+  LocalCategory(name: 'Waterproofing', slug: 'waterproofing'),
+  LocalCategory(name: 'Interior', slug: 'interior'),
 ];
