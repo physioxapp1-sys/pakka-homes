@@ -45,9 +45,14 @@ class ApiClient {
 
   void close() => _client.close();
 
+  /// Named so the host can allow it through by name. The default
+  /// `Dart/x.y (dart:io)` is what the server's bot filter currently challenges.
+  static const userAgent = 'PakkaHomes/1.0 (Android)';
+
   Map<String, String> _headers(String? token) => {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'User-Agent': userAgent,
         if (token != null) 'Authorization': 'Token $token',
       };
 
@@ -64,7 +69,25 @@ class ApiClient {
       throw ApiException(e.message);
     }
 
-    final body = response.body.isEmpty ? null : jsonDecode(response.body);
+    final dynamic body;
+    try {
+      body = response.body.isEmpty ? null : jsonDecode(response.body);
+    } on FormatException {
+      // The API only ever answers JSON, so HTML here is something in front of
+      // it answering instead - on this host, LiteSpeed's bot check, which
+      // serves a reCAPTCHA page with a 200 and would otherwise surface as an
+      // unhandled parse error miles from the cause.
+      final looksLikeHtml =
+          response.body.trimLeft().toLowerCase().startsWith('<!doctype') ||
+              response.body.trimLeft().toLowerCase().startsWith('<html');
+      throw ApiException(
+        looksLikeHtml
+            ? 'The server returned a web page instead of data, which usually '
+                'means a bot filter or firewall is blocking the app.'
+            : 'The server sent a response the app could not read.',
+        statusCode: response.statusCode,
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
