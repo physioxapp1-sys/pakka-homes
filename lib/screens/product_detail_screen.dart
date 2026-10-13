@@ -208,17 +208,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               onQuantity: (q) => setState(() => _quantity = q.clamp(1, 99)),
               onAdd: () {
                 cart.add(product, quantity: _quantity);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.displayName} added to cart'),
-                    action: SnackBarAction(
-                      label: 'View cart',
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const CartScreen()),
+                // Replace rather than queue: tapping Add five times used to
+                // mean twenty seconds of toast, one after another.
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      duration: const Duration(seconds: 2),
+                      content: Text('${product.displayName} added to cart'),
+                      action: SnackBarAction(
+                        label: 'View cart',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const CartScreen()),
+                        ),
                       ),
                     ),
-                  ),
-                );
+                  );
               },
             )
           : null,

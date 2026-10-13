@@ -26,8 +26,20 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
+  static const _pageSize = 10;
+
+  /// How long the cart summary stays up after the cart last changed. The cart
+  /// icon in the app bar keeps its count either way, so nothing is lost when
+  /// this goes - it just stops sitting over the last row of the aisle.
+  static const _cartBarLinger = Duration(seconds: 5);
+
   final _repository = ProductRepository();
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+
+  /// Fixed for as long as this screen is open, so page 2 continues page 1
+  /// instead of re-shuffling and repeating what page 1 showed.
+  final _seed = DateTime.now().millisecondsSinceEpoch % 100000;
 
   List<Product>? _products;
   List<ProductCollection> _collections = const [];
@@ -36,19 +48,83 @@ class _ProductListScreenState extends State<ProductListScreen> {
   String? _error;
   Timer? _debounce;
 
+  int _page = 1;
+  bool _hasMore = false;
+  bool _loadingMore = false;
+  bool _moreFailed = false;
+
+  Cart? _cart;
+  bool _showCartBar = false;
+  int _lastCartQuantity = 0;
+  Timer? _cartBarTimer;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _load();
     _loadCollections();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final cart = CartScope.of(context);
+    if (!identical(cart, _cart)) {
+      _cart?.removeListener(_onCartChanged);
+      _cart = cart..addListener(_onCartChanged);
+      _lastCartQuantity = cart.totalQuantity;
+      // Already holding something on the way in - show it, then let it go.
+      if (!cart.isEmpty) _flashCartBar();
+    }
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
+    _cartBarTimer?.cancel();
+    _cart?.removeListener(_onCartChanged);
+    _scrollController.dispose();
     _searchController.dispose();
     _repository.dispose();
     super.dispose();
+  }
+
+  void _onCartChanged() {
+    final cart = _cart;
+    if (cart == null) return;
+    // Only a change in what is in the cart brings the bar back. Any other
+    // notification should not make it reappear.
+    if (cart.totalQuantity != _lastCartQuantity) {
+      _lastCartQuantity = cart.totalQuantity;
+      if (cart.isEmpty) {
+        _cartBarTimer?.cancel();
+        if (mounted) setState(() => _showCartBar = false);
+      } else {
+        _flashCartBar();
+      }
+    }
+  }
+
+  void _flashCartBar() {
+    _cartBarTimer?.cancel();
+    setState(() => _showCartBar = true);
+    _cartBarTimer = Timer(_cartBarLinger, () {
+      if (mounted) setState(() => _showCartBar = false);
+    });
+  }
+
+  /// Fetches the next page a little before the bottom, so the next ten are
+  /// usually there by the time the scroll arrives.
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        _loadingMore ||
+        _moreFailed ||
+        !_hasMore) {
+      return;
+    }
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 400) _loadMore();
   }
 
   Future<void> _loadCollections() async {
@@ -60,22 +136,69 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
   }
 
+  /// The first page. Also the reset: changing the search or the chip starts
+  /// the aisle again from the top.
   Future<void> _load() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _page = 1;
+    });
     try {
-      final rows = await _repository.list(
+      final page = await _repository.page(
         subcategorySlug: widget.subcategorySlug,
+        pageNumber: 1,
+        pageSize: _pageSize,
+        seed: _seed,
         collectionSlug: _activeCollection,
         search: _search,
       );
-      if (mounted) setState(() => _products = rows);
+      if (mounted) {
+        setState(() {
+          _products = page.products;
+          _hasMore = page.hasMore;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
           _products = const [];
+          _hasMore = false;
+          _moreFailed = false;
           _error = e.message;
         });
       }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreFailed = false;
+    });
+    try {
+      final page = await _repository.page(
+        subcategorySlug: widget.subcategorySlug,
+        pageNumber: _page + 1,
+        pageSize: _pageSize,
+        seed: _seed,
+        collectionSlug: _activeCollection,
+        search: _search,
+      );
+      if (mounted) {
+        setState(() {
+          _products = [...?_products, ...page.products];
+          _hasMore = page.hasMore;
+          _page++;
+        });
+      }
+    } on ApiException {
+      // What has loaded still reads fine, so this is a footer to tap rather
+      // than an error thrown over an aisle someone is already reading. The
+      // scroll listener stops asking until they do.
+      if (mounted) setState(() => _moreFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -167,7 +290,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
           Expanded(child: _body(cart)),
         ],
       ),
-      bottomNavigationBar: cart.isEmpty ? null : _CartBar(cart: cart),
+      // Collapsed rather than removed, so the list grows back into the space
+      // instead of jumping when the bar's time is up.
+      bottomNavigationBar: cart.isEmpty
+          ? null
+          : AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              alignment: Alignment.topCenter,
+              child: _showCartBar
+                  ? _CartBar(cart: cart)
+                  : const SizedBox(width: double.infinity),
+            ),
     );
   }
 
@@ -200,15 +334,71 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
-        itemCount: products.length,
+        // One past the end is the footer: the spinner for the next ten, or
+        // the note that this is the end of the aisle.
+        itemCount: products.length +
+            (_hasMore || _moreFailed || products.length > _pageSize ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _ProductRow(
-          product: products[i],
-          cart: cart,
-          onTap: () => _openProduct(products[i]),
-        ),
+        itemBuilder: (_, i) {
+          if (i >= products.length) {
+            return _ListFooter(
+              loading: _hasMore && !_moreFailed,
+              failed: _moreFailed,
+              count: products.length,
+              onRetry: _loadMore,
+            );
+          }
+          return _ProductRow(
+            product: products[i],
+            cart: cart,
+            onTap: () => _openProduct(products[i]),
+          );
+        },
       ),
+    );
+  }
+}
+
+class _ListFooter extends StatelessWidget {
+  const _ListFooter({
+    required this.loading,
+    required this.failed,
+    required this.count,
+    required this.onRetry,
+  });
+
+  final bool loading;
+  final bool failed;
+  final int count;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget child;
+    if (loading) {
+      child = const SizedBox(
+        height: 22,
+        width: 22,
+        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.green),
+      );
+    } else if (failed) {
+      child = TextButton.icon(
+        onPressed: onRetry,
+        icon: const Icon(Icons.refresh, size: 16),
+        label: const Text('Could not load more - tap to try again'),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+      );
+    } else {
+      child = Text(
+        'All $count shown',
+        style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Center(child: child),
     );
   }
 }
