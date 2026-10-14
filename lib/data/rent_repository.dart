@@ -101,9 +101,12 @@ class RentRepository {
 
   /// Puts a tenant into a property. The server raises that month's rent as
   /// part of it, so the rent roll is not empty afterwards.
+  /// [roomIds] is every room the lease covers - one for a single room, more
+  /// where a family takes several. The server treats the first as the
+  /// headline one.
   Future<RentContract> addTenant({
     required String token,
-    required int propertyId,
+    required List<int> roomIds,
     required String tenantName,
     required String tenantPhone,
     required DateTime startDate,
@@ -115,7 +118,7 @@ class RentRepository {
     final body = await _api.post(
       '/rent/contracts/',
       {
-        'property': propertyId,
+        'rooms': roomIds,
         'tenant_name': tenantName,
         'tenant_phone': tenantPhone,
         'start_date': _ymd(startDate),

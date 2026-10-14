@@ -214,12 +214,24 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }
 }
 
-/// Putting a tenant into one property. The rent and deposit start at what the
-/// property asks, because that is usually what was agreed.
+/// Putting a tenant into a place.
+///
+/// A lease covers one room or several: a family taking two rooms is one
+/// tenancy over both, paying once. The room it was opened from is ticked, the
+/// other empty ones at the same address can be ticked too, and the rent is one
+/// figure for the lot rather than a sum to split.
 class AddTenantScreen extends StatefulWidget {
-  const AddTenantScreen({super.key, required this.property});
+  const AddTenantScreen({
+    super.key,
+    required this.property,
+    this.alsoVacant = const [],
+  });
 
+  /// The room tapped. Always part of the lease.
   final RentProperty property;
+
+  /// Other empty rooms the owner has, offered alongside it.
+  final List<RentProperty> alsoVacant;
 
   @override
   State<AddTenantScreen> createState() => _AddTenantScreenState();
@@ -241,6 +253,10 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
   int _dueDay = 1;
   bool _saving = false;
   Map<String, List<String>> _serverErrors = const {};
+
+  /// Room ids on the lease, the tapped one first - the server makes the first
+  /// its headline room.
+  late final _rooms = <int>{widget.property.id};
 
   @override
   void dispose() {
@@ -275,7 +291,11 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
     try {
       final contract = await _repository.addTenant(
         token: AuthScope.of(context).token!,
-        propertyId: widget.property.id,
+        roomIds: [
+          widget.property.id,
+          for (final room in widget.alsoVacant)
+            if (_rooms.contains(room.id)) room.id,
+        ],
         tenantName: _name.text.trim(),
         tenantPhone: _phone.text.trim(),
         startDate: _start,
@@ -290,9 +310,9 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
       final errors = e.fieldErrors ?? const <String, List<String>>{};
       setState(() => _serverErrors = errors);
       _formKey.currentState!.validate();
-      // "Someone is already in it" lands on the property, which has no field
-      // on this form - so it is said out loud instead of silently dropped.
-      final onProperty = errors['property']?.first;
+      // "Someone is already in Room 2" lands on the rooms, which have no
+      // field on this form - so it is said out loud instead of being dropped.
+      final onProperty = errors['rooms']?.first ?? errors['property']?.first;
       if (onProperty != null || e.fieldErrors == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(onProperty ?? e.message)),
@@ -336,6 +356,29 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
                 ],
               ),
             ),
+            if (widget.alsoVacant.isNotEmpty) ...[
+              const _Label('Taking more than one room?'),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Tick any others they are taking. One lease, one rent, one '
+                  'row a month.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+              ),
+              for (final room in widget.alsoVacant)
+                CheckboxListTile(
+                  value: _rooms.contains(room.id),
+                  onChanged: (on) => setState(() => on == true
+                      ? _rooms.add(room.id)
+                      : _rooms.remove(room.id)),
+                  activeColor: AppColors.green,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
+                  title: Text(room.title, style: const TextStyle(fontSize: 13.5)),
+                ),
+            ],
             const SizedBox(height: 16),
             RentField(
               controller: _name,
@@ -393,6 +436,9 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
               label: 'Monthly rent (NPR)',
               icon: Icons.payments_outlined,
               keyboardType: TextInputType.number,
+              helper: _rooms.length > 1
+                  ? 'The whole lease, for all ${_rooms.length} rooms together.'
+                  : null,
               validator: (v) =>
                   _serverError('monthly_rent') ??
                   (((double.tryParse((v ?? '').trim()) ?? 0) <= 0)

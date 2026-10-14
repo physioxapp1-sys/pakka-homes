@@ -131,6 +131,7 @@ class RentContract {
     required this.propertyTitle,
     required this.monthlyRent,
     this.propertyAddress = '',
+    this.roomNames = const [],
     this.tenantPhone = '',
     this.ownerName,
     this.startDate,
@@ -147,6 +148,10 @@ class RentContract {
   final String tenantPhone;
   final String propertyTitle;
   final String propertyAddress;
+
+  /// Every room the lease covers. One name for a one-room let; several where
+  /// a family took more than one.
+  final List<String> roomNames;
   final String? ownerName;
   final DateTime? startDate;
 
@@ -156,6 +161,10 @@ class RentContract {
   final double deposit;
   final int rentDueDay;
   final String statusDisplay;
+
+  /// What to call the place in a list: the rooms it covers, or the property.
+  String get placeName =>
+      roomNames.isNotEmpty ? roomNames.join(', ') : propertyTitle;
 
   /// The signed agreement, when a copy was uploaded.
   final String? documentUrl;
@@ -167,6 +176,9 @@ class RentContract {
         tenantPhone: json['tenant_phone'] as String? ?? '',
         propertyTitle: json['property_title'] as String? ?? '',
         propertyAddress: json['property_address'] as String? ?? '',
+        roomNames: (json['room_names'] as List<dynamic>? ?? const [])
+            .map((e) => '$e')
+            .toList(),
         ownerName: json['owner_name'] as String?,
         startDate: _toDate(json['start_date']),
         endDate: _toDate(json['end_date']),

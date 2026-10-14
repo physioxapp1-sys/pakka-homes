@@ -348,7 +348,7 @@ class _DashboardTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(s.contract.propertyTitle,
+            Text(s.contract.placeName,
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text(s.contract.propertyAddress,
@@ -446,8 +446,17 @@ class _PropertiesTabState extends State<_PropertiesTab> {
   }
 
   Future<void> _addTenant(RentProperty property) async {
+    // The other empty rooms, so a family taking two can be put on one lease
+    // without going round twice.
+    final alsoVacant = [
+      for (final row in _rows ?? const <RentProperty>[])
+        if (row.id != property.id && !row.isOccupied) row,
+    ];
     final added = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => AddTenantScreen(property: property)),
+      MaterialPageRoute(
+        builder: (_) =>
+            AddTenantScreen(property: property, alsoVacant: alsoVacant),
+      ),
     );
     if (added != null && mounted) {
       await _load();
@@ -987,7 +996,7 @@ class _ContractTabState extends State<_ContractTab> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('End this tenancy?'),
         content: Text(
-          '${contract.tenantName} moves out of ${contract.propertyTitle}. '
+          '${contract.tenantName} moves out of ${contract.placeName}. '
           'The rent already recorded under this lease is kept.',
         ),
         actions: [
@@ -1035,7 +1044,7 @@ class _ContractCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      title: contract.propertyTitle,
+      title: contract.placeName,
       trailing: contract.statusDisplay,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
