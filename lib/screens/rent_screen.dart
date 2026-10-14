@@ -7,6 +7,7 @@ import '../data/rent_models.dart';
 import '../data/rent_repository.dart';
 import '../theme/app_colors.dart';
 import 'auth_screen.dart';
+import 'rent_forms.dart';
 
 /// Rent: Dashboard, Properties, Rent & Payments, Contract.
 ///
@@ -152,10 +153,13 @@ class _RentScreenState extends State<RentScreen> {
           children: [
             _DashboardTab(home: home, asTenant: tenantSide, onRefresh: _load),
             _PropertiesTab(
-                repository: _repository, asTenant: tenantSide, home: home),
+                repository: _repository, asTenant: tenantSide, onChanged: _load),
             _PaymentsTab(
                 repository: _repository, asTenant: tenantSide, onChanged: _load),
-            _ContractTab(repository: _repository, asTenant: tenantSide),
+            _ContractTab(
+                repository: _repository,
+                asTenant: tenantSide,
+                onChanged: _load),
           ],
         ),
       ),
@@ -307,12 +311,14 @@ class _PropertiesTab extends StatefulWidget {
   const _PropertiesTab({
     required this.repository,
     required this.asTenant,
-    required this.home,
+    required this.onChanged,
   });
 
   final RentRepository repository;
   final bool asTenant;
-  final RentHome home;
+
+  /// Adding a property or a tenant changes the dashboard too.
+  final Future<void> Function() onChanged;
 
   @override
   State<_PropertiesTab> createState() => _PropertiesTabState();
@@ -356,44 +362,94 @@ class _PropertiesTabState extends State<_PropertiesTab> {
     }
   }
 
+  Future<void> _addProperty() async {
+    final added = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+    );
+    if (added != null && mounted) {
+      await _load();
+      await widget.onChanged();
+    }
+  }
+
+  Future<void> _addTenant(RentProperty property) async {
+    final added = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AddTenantScreen(property: property)),
+    );
+    if (added != null && mounted) {
+      await _load();
+      await widget.onChanged();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tenant added, and this month\u2019s '
+              'rent is on the Rent & Payments tab.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = _rows;
     if (rows == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.green));
     }
-    if (rows.isEmpty) {
-      return _Message(
-        icon: Icons.home_work_outlined,
-        text: _error ??
-            (widget.asTenant
-                ? 'Nothing listed to rent just now.'
-                : 'No properties yet. Add them in the office and they appear here.'),
-        actionLabel: 'Refresh',
-        onAction: _load,
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: _load,
-      color: AppColors.green,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: rows.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) =>
-            _PropertyCard(property: rows[i], browsing: widget.asTenant),
+
+    final body = rows.isEmpty
+        ? _Message(
+            icon: Icons.home_work_outlined,
+            text: _error ??
+                (widget.asTenant
+                    ? 'Nothing listed to rent just now.'
+                    : 'No properties yet. Add your first one and the rest of '
+                        'this section comes to life.'),
+            actionLabel: widget.asTenant ? 'Refresh' : 'Add a property',
+            onAction: widget.asTenant ? _load : _addProperty,
+          )
+        : RefreshIndicator(
+            onRefresh: _load,
+            color: AppColors.green,
+            child: ListView.separated(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, widget.asTenant ? 16 : 86),
+              itemCount: rows.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) => _PropertyCard(
+                property: rows[i],
+                browsing: widget.asTenant,
+                onAddTenant: () => _addTenant(rows[i]),
+              ),
+            ),
+          );
+
+    // An owner always has somewhere to add the next one; a renter is browsing
+    // and has nothing to add.
+    if (widget.asTenant) return body;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: body,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addProperty,
+        backgroundColor: AppColors.green,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add property'),
       ),
     );
   }
 }
 
 class _PropertyCard extends StatelessWidget {
-  const _PropertyCard({required this.property, required this.browsing});
+  const _PropertyCard({
+    required this.property,
+    required this.browsing,
+    this.onAddTenant,
+  });
 
   final RentProperty property;
 
   /// Browsing for a place, rather than looking at one's own.
   final bool browsing;
+  final VoidCallback? onAddTenant;
 
   @override
   Widget build(BuildContext context) {
@@ -476,6 +532,25 @@ class _PropertyCard extends StatelessWidget {
                               fontSize: 12.5, color: AppColors.textSecondary)),
                   ],
                 ),
+                // An empty flat earns nothing, so the way out of that is on
+                // the card rather than somewhere else.
+                if (!browsing && !property.isOccupied && onAddTenant != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: onAddTenant,
+                      icon: const Icon(Icons.person_add_alt_1_outlined, size: 17),
+                      label: const Text('Add a tenant'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.green,
+                        side: const BorderSide(color: AppColors.green),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -734,10 +809,15 @@ class _PaymentRow extends StatelessWidget {
 // ----------------------------------------------------------------- contract
 
 class _ContractTab extends StatefulWidget {
-  const _ContractTab({required this.repository, required this.asTenant});
+  const _ContractTab({
+    required this.repository,
+    required this.asTenant,
+    required this.onChanged,
+  });
 
   final RentRepository repository;
   final bool asTenant;
+  final Future<void> Function() onChanged;
 
   @override
   State<_ContractTab> createState() => _ContractTabState();
@@ -798,18 +878,67 @@ class _ContractTabState extends State<_ContractTab> {
         padding: const EdgeInsets.all(16),
         itemCount: rows.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) =>
-            _ContractCard(contract: rows[i], asTenant: widget.asTenant),
+        itemBuilder: (_, i) => _ContractCard(
+          contract: rows[i],
+          asTenant: widget.asTenant,
+          onEnd: widget.asTenant ? null : () => _end(rows[i]),
+        ),
       ),
     );
+  }
+
+  /// Ending a tenancy is asked about first: it is the kind of thing a thumb
+  /// does by accident and a month of rent roll depends on.
+  Future<void> _end(RentContract contract) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('End this tenancy?'),
+        content: Text(
+          '${contract.tenantName} moves out of ${contract.propertyTitle}. '
+          'The rent already recorded under this lease is kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.emergencyRed),
+            child: const Text('End tenancy'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.repository
+          .endTenancy(contract.id, token: AuthScope.of(context).token!);
+      await _load();
+      await widget.onChanged();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
   }
 }
 
 class _ContractCard extends StatelessWidget {
-  const _ContractCard({required this.contract, required this.asTenant});
+  const _ContractCard({
+    required this.contract,
+    required this.asTenant,
+    this.onEnd,
+  });
 
   final RentContract contract;
   final bool asTenant;
+
+  /// Null for a tenant, and for a lease that has already ended.
+  final VoidCallback? onEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -861,6 +990,21 @@ class _ContractCard extends StatelessWidget {
                       style: TextStyle(fontSize: 12.5, color: AppColors.green)),
                 ),
               ],
+            ),
+          ],
+          if (onEnd != null && contract.statusDisplay != 'Ended') ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onEnd,
+                icon: const Icon(Icons.logout_rounded, size: 16),
+                label: const Text('Tenant moved out'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.emergencyRed,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ),
           ],
         ],

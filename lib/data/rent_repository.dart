@@ -61,6 +61,89 @@ class RentRepository {
     return rows.map(RentContract.fromJson).toList();
   }
 
+  /// Adds a property. The server makes the caller its owner; nothing here
+  /// says who owns it, because nothing here should be able to.
+  Future<RentProperty> addProperty({
+    required String token,
+    required String title,
+    required String address,
+    required double monthlyRent,
+    String kind = 'flat',
+    String city = '',
+    String landmark = '',
+    int bedrooms = 0,
+    int bathrooms = 0,
+    int? areaSqft,
+    double deposit = 0,
+    bool isListed = false,
+    String description = '',
+  }) async {
+    final body = await _api.post(
+      '/rent/properties/',
+      {
+        'title': title,
+        'address': address,
+        'kind': kind,
+        'monthly_rent': monthlyRent.round().toString(),
+        'deposit': deposit.round().toString(),
+        if (city.isNotEmpty) 'city': city,
+        if (landmark.isNotEmpty) 'landmark': landmark,
+        'bedrooms': bedrooms,
+        'bathrooms': bathrooms,
+        if (areaSqft != null) 'area_sqft': areaSqft,
+        'is_listed': isListed,
+        if (description.isNotEmpty) 'description': description,
+      },
+      token: token,
+    );
+    return RentProperty.fromJson(body as Map<String, dynamic>);
+  }
+
+  /// Puts a tenant into a property. The server raises that month's rent as
+  /// part of it, so the rent roll is not empty afterwards.
+  Future<RentContract> addTenant({
+    required String token,
+    required int propertyId,
+    required String tenantName,
+    required String tenantPhone,
+    required DateTime startDate,
+    required double monthlyRent,
+    double deposit = 0,
+    int rentDueDay = 1,
+    String notes = '',
+  }) async {
+    final body = await _api.post(
+      '/rent/contracts/',
+      {
+        'property': propertyId,
+        'tenant_name': tenantName,
+        'tenant_phone': tenantPhone,
+        'start_date': _ymd(startDate),
+        'monthly_rent': monthlyRent.round().toString(),
+        'deposit': deposit.round().toString(),
+        'rent_due_day': rentDueDay,
+        if (notes.isNotEmpty) 'notes': notes,
+      },
+      token: token,
+    );
+    return RentContract.fromJson(body as Map<String, dynamic>);
+  }
+
+  /// Someone has moved out. Ends the lease rather than deleting it.
+  Future<RentContract> endTenancy(int tenancyId, {required String token}) async {
+    final body = await _api.post(
+      '/rent/contracts/$tenancyId/end/',
+      const {},
+      token: token,
+    );
+    return RentContract.fromJson(body as Map<String, dynamic>);
+  }
+
+  static String _ymd(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
   void dispose() => _api.close();
 
   Future<List<RentProperty>> _properties({
