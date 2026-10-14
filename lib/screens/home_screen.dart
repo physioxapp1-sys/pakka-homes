@@ -83,6 +83,7 @@ void _openMaintenance(BuildContext context) {
         icon: Icons.build_rounded,
         iconColor: AppColors.blue,
         items: [for (final s in _maintenanceSlugs) _category(s).name],
+        slugs: _maintenanceSlugs,
         itemRoutes: {
           for (final s in _maintenanceSlugs)
             _category(s).name: (_) => SubcategoryScreen(
