@@ -61,6 +61,71 @@ class RentRepository {
     return rows.map(RentContract.fromJson).toList();
   }
 
+  /// The landlord's houses and plots.
+  Future<List<Building>> buildings(String token) async {
+    final rows = await _collect('/rent/buildings/', token: token);
+    return rows.map(Building.fromJson).toList();
+  }
+
+  Future<Building> addBuilding({
+    required String token,
+    required String name,
+    required String kind,
+    String address = '',
+    String city = '',
+    String landmark = '',
+  }) async {
+    final body = await _api.post(
+      '/rent/buildings/',
+      {
+        'name': name,
+        'kind': kind,
+        if (address.isNotEmpty) 'address': address,
+        if (city.isNotEmpty) 'city': city,
+        if (landmark.isNotEmpty) 'landmark': landmark,
+      },
+      token: token,
+    );
+    return Building.fromJson(body as Map<String, dynamic>);
+  }
+
+  /// Lays out floors of rooms in one go: six floors, four rooms each.
+  Future<Building> addRooms({
+    required String token,
+    required int buildingId,
+    required List<int> floors,
+    required int roomsPerFloor,
+    String namePrefix = 'Room',
+  }) async {
+    final body = await _api.post(
+      '/rent/buildings/$buildingId/rooms/',
+      {
+        if (floors.isNotEmpty) 'floors': floors,
+        'rooms_per_floor': roomsPerFloor,
+        if (namePrefix.isNotEmpty) 'name_prefix': namePrefix,
+      },
+      token: token,
+    );
+    return Building.fromJson(body as Map<String, dynamic>);
+  }
+
+  /// The rooms in one building, so a house reads floor by floor.
+  Future<List<RentProperty>> rooms(String token, int buildingId) async =>
+      _properties(token: token, query: {'building': '$buildingId'});
+
+  Future<Building> renameBuilding(
+    int buildingId, {
+    required String token,
+    required String name,
+  }) async {
+    final body = await _api.patch(
+      '/rent/buildings/$buildingId/',
+      {'name': name},
+      token: token,
+    );
+    return Building.fromJson(body as Map<String, dynamic>);
+  }
+
   /// Adds a property. The server makes the caller its owner; nothing here
   /// says who owns it, because nothing here should be able to.
   Future<RentProperty> addProperty({

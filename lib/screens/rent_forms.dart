@@ -6,49 +6,42 @@ import '../data/rent_models.dart';
 import '../data/rent_repository.dart';
 import '../theme/app_colors.dart';
 
-/// Adding a property, and putting a tenant into one.
+/// Adding a house, laying out its rooms, and putting a tenant into them.
 ///
-/// Both exist so an owner never has to be sent to the office to see their own
-/// Rent tab do anything. Both pop with the thing they created, so the list
-/// behind them can refresh without guessing.
+/// These exist so an owner never has to be sent to the office to see their own
+/// Rent tab do anything. Each pops with the thing it created, so the list
+/// behind it can refresh without guessing.
 
-class AddPropertyScreen extends StatefulWidget {
-  const AddPropertyScreen({super.key});
+/// Adding a house, a plot, or whatever else is let.
+///
+/// Only a name is really needed - "House 1" will do, and it can be renamed
+/// the week after. Floors and rooms come next, on the house's own screen.
+class AddBuildingScreen extends StatefulWidget {
+  const AddBuildingScreen({super.key});
 
   @override
-  State<AddPropertyScreen> createState() => _AddPropertyScreenState();
+  State<AddBuildingScreen> createState() => _AddBuildingScreenState();
 }
 
-class _AddPropertyScreenState extends State<AddPropertyScreen> {
+class _AddBuildingScreenState extends State<AddBuildingScreen> {
   final _repository = RentRepository();
   final _formKey = GlobalKey<FormState>();
 
-  final _title = TextEditingController();
+  final _name = TextEditingController();
   final _address = TextEditingController();
   final _city = TextEditingController();
-  final _rent = TextEditingController();
-  final _deposit = TextEditingController();
-  final _area = TextEditingController();
 
-  String _kind = 'flat';
-  int _bedrooms = 1;
-  int _bathrooms = 1;
-  bool _listed = false;
+  String _kind = 'house';
   bool _saving = false;
   Map<String, List<String>> _serverErrors = const {};
 
   @override
   void dispose() {
-    for (final c in [_title, _address, _city, _rent, _deposit, _area]) {
+    for (final c in [_name, _address, _city]) {
       c.dispose();
     }
     _repository.dispose();
     super.dispose();
-  }
-
-  String? _serverError(String field) {
-    final errors = _serverErrors[field];
-    return (errors == null || errors.isEmpty) ? null : errors.first;
   }
 
   Future<void> _save() async {
@@ -57,20 +50,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     setState(() => _saving = true);
     try {
-      final property = await _repository.addProperty(
+      final building = await _repository.addBuilding(
         token: AuthScope.of(context).token!,
-        title: _title.text.trim(),
+        name: _name.text.trim(),
+        kind: _kind,
         address: _address.text.trim(),
         city: _city.text.trim(),
-        monthlyRent: double.tryParse(_rent.text.trim()) ?? 0,
-        deposit: double.tryParse(_deposit.text.trim()) ?? 0,
-        areaSqft: int.tryParse(_area.text.trim()),
-        kind: _kind,
-        bedrooms: _bedrooms,
-        bathrooms: _bathrooms,
-        isListed: _listed,
       );
-      if (mounted) Navigator.of(context).pop(property);
+      if (mounted) Navigator.of(context).pop(building);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _serverErrors = e.fieldErrors ?? const {});
@@ -92,7 +79,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
-        title: const Text('Add a property'),
+        title: const Text('Add a house'),
       ),
       body: Form(
         key: _formKey,
@@ -100,22 +87,23 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             RentField(
-              controller: _title,
+              controller: _name,
               label: 'What do you call it?',
-              hint: 'Dhapasi 2BHK, first floor',
-              icon: Icons.home_outlined,
-              textCapitalization: TextCapitalization.sentences,
+              hint: 'House 1',
+              icon: Icons.apartment_outlined,
+              textCapitalization: TextCapitalization.words,
+              helper: 'You can rename it any time.',
               validator: (v) =>
-                  _serverError('title') ??
-                  ((v == null || v.trim().length < 3)
-                      ? 'Give it a name you will recognise.'
+                  (_serverErrors['name']?.first) ??
+                  ((v == null || v.trim().length < 2)
+                      ? "Give it a name, even just 'House 1'."
                       : null),
             ),
-            const _Label('Type'),
+            const _Label('What is it?'),
             Wrap(
               spacing: 8,
               children: [
-                for (final (value, label) in kPropertyKinds)
+                for (final (value, label) in kBuildingKinds)
                   ChoiceChip(
                     label: Text(label, style: const TextStyle(fontSize: 12)),
                     selected: _kind == value,
@@ -124,18 +112,23 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Text(
+                _kind == 'house'
+                    ? 'You will lay out its floors and rooms next.'
+                    : 'Let whole, so it has no floors or rooms.',
+                style: const TextStyle(
+                    fontSize: 12.5, color: AppColors.textSecondary),
+              ),
+            ),
             RentField(
               controller: _address,
               label: 'Address',
               icon: Icons.location_on_outlined,
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
-              validator: (v) =>
-                  _serverError('address') ??
-                  ((v == null || v.trim().length < 5)
-                      ? 'Enter enough address for someone to find it.'
-                      : null),
             ),
             RentField(
               controller: _city,
@@ -143,67 +136,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
               icon: Icons.location_city_outlined,
               textCapitalization: TextCapitalization.words,
             ),
-            const _Label('Size'),
-            Row(
-              children: [
-                Expanded(
-                  child: _Counter(
-                    label: 'Bedrooms',
-                    value: _bedrooms,
-                    onChanged: (v) => setState(() => _bedrooms = v),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _Counter(
-                    label: 'Bathrooms',
-                    value: _bathrooms,
-                    onChanged: (v) => setState(() => _bathrooms = v),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            RentField(
-              controller: _area,
-              label: 'Area in sq ft (optional)',
-              icon: Icons.straighten_rounded,
-              keyboardType: TextInputType.number,
-            ),
-            const _Label('Money'),
-            RentField(
-              controller: _rent,
-              label: 'Monthly rent (NPR)',
-              icon: Icons.payments_outlined,
-              keyboardType: TextInputType.number,
-              validator: (v) =>
-                  _serverError('monthly_rent') ??
-                  (((double.tryParse((v ?? '').trim()) ?? 0) <= 0)
-                      ? 'Enter the monthly rent.'
-                      : null),
-            ),
-            RentField(
-              controller: _deposit,
-              label: 'Deposit (optional)',
-              icon: Icons.savings_outlined,
-              keyboardType: TextInputType.number,
-            ),
-            CheckboxListTile(
-              value: _listed,
-              onChanged: (v) => setState(() => _listed = v ?? false),
-              activeColor: AppColors.green,
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('Show it to people looking to rent',
-                  style: TextStyle(fontSize: 13.5)),
-              subtitle: const Text(
-                'It comes off the list by itself once someone moves in.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _SaveButton(
-              label: 'Add property',
+              label: _kind == 'house' ? 'Add house' : 'Add it',
               busy: _saving,
               onPressed: _save,
             ),
@@ -213,6 +148,182 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     );
   }
 }
+
+/// Laying out floors of rooms in one go.
+///
+/// A landlord says "six floors, four rooms each" once, rather than adding
+/// twenty-four rooms one at a time.
+class AddRoomsScreen extends StatefulWidget {
+  const AddRoomsScreen({
+    super.key,
+    required this.building,
+    required this.repository,
+  });
+
+  final Building building;
+  final RentRepository repository;
+
+  @override
+  State<AddRoomsScreen> createState() => _AddRoomsScreenState();
+}
+
+class _AddRoomsScreenState extends State<AddRoomsScreen> {
+  int _floors = 1;
+  int _roomsPerFloor = 4;
+  bool _saving = false;
+
+  /// The floors this would create, carrying on above whatever is there.
+  List<int> get _newFloors {
+    final existing = widget.building.floors.map((f) => f.floor).toList();
+    final from = existing.isEmpty ? 1 : (existing.reduce((a, b) => a > b ? a : b) + 1);
+    return [for (var i = 0; i < _floors; i++) from + i];
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await widget.repository.addRooms(
+        token: AuthScope.of(context).token!,
+        buildingId: widget.building.id,
+        floors: _newFloors,
+        roomsPerFloor: _roomsPerFloor,
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final floors = _newFloors;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        foregroundColor: AppColors.textPrimary,
+        title: const Text('Add rooms'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const _Label('How many floors are you adding?'),
+          _Stepper(
+            value: _floors,
+            min: 1,
+            max: 20,
+            onChanged: (v) => setState(() => _floors = v),
+          ),
+          const SizedBox(height: 16),
+          const _Label('How many rooms on each?'),
+          _Stepper(
+            value: _roomsPerFloor,
+            min: 1,
+            max: 40,
+            onChanged: (v) => setState(() => _roomsPerFloor = v),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.tileGreen,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This adds ${floors.length * _roomsPerFloor} rooms',
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.green),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  floors.length == 1
+                      ? 'Floor ${floors.first}, rooms 1 to $_roomsPerFloor.'
+                      : 'Floors ${floors.first} to ${floors.last}, '
+                          '$_roomsPerFloor rooms each.',
+                  style: const TextStyle(
+                      fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Rent is set per room when you add a tenant, so nothing to '
+                  'type now.',
+                  style: TextStyle(
+                      fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _SaveButton(
+            label: 'Add ${floors.length * _roomsPerFloor} rooms',
+            busy: _saving,
+            onPressed: _save,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stepper extends StatelessWidget {
+  const _Stepper({
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            onPressed: value > min ? () => onChanged(value - 1) : null,
+            icon: const Icon(Icons.remove_circle_outline),
+            color: AppColors.primary,
+          ),
+          Text('$value',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          IconButton(
+            onPressed: value < max ? () => onChanged(value + 1) : null,
+            icon: const Icon(Icons.add_circle_outline),
+            color: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const kBuildingKinds = <(String, String)>[
+  ('house', 'House'),
+  ('land', 'Land'),
+  ('other', 'Other'),
+];
 
 /// Putting a tenant into a place.
 ///
@@ -484,13 +595,6 @@ class _AddTenantScreenState extends State<AddTenantScreen> {
   }
 }
 
-const kPropertyKinds = <(String, String)>[
-  ('flat', 'Flat / Apartment'),
-  ('house', 'House'),
-  ('room', 'Room'),
-  ('shop', 'Shop / Commercial'),
-];
-
 class RentField extends StatelessWidget {
   const RentField({
     super.key,
@@ -559,53 +663,6 @@ class _Label extends StatelessWidget {
       child: Text(text,
           style: const TextStyle(
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.navy)),
-    );
-  }
-}
-
-class _Counter extends StatelessWidget {
-  const _Counter({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 12.5, color: AppColors.textSecondary)),
-          ),
-          IconButton(
-            onPressed: value > 0 ? () => onChanged(value - 1) : null,
-            icon: const Icon(Icons.remove_circle_outline, size: 20),
-            visualDensity: VisualDensity.compact,
-            color: AppColors.primary,
-          ),
-          Text('$value',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          IconButton(
-            onPressed: value < 20 ? () => onChanged(value + 1) : null,
-            icon: const Icon(Icons.add_circle_outline, size: 20),
-            visualDensity: VisualDensity.compact,
-            color: AppColors.primary,
-          ),
-        ],
-      ),
     );
   }
 }

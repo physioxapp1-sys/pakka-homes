@@ -7,6 +7,7 @@ import '../data/rent_models.dart';
 import '../data/rent_repository.dart';
 import '../theme/app_colors.dart';
 import 'auth_screen.dart';
+import 'rent_buildings_screen.dart';
 import 'rent_forms.dart';
 
 /// Rent: Dashboard, Properties, Rent & Payments, Contract.
@@ -77,7 +78,7 @@ class _RentScreenState extends State<RentScreen> {
   /// on the Properties tab too, but nobody in this state can reach that.
   Future<void> _addFirstProperty() async {
     final added = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+      MaterialPageRoute(builder: (_) => const AddBuildingScreen()),
     );
     if (added != null && mounted) await _load();
   }
@@ -119,11 +120,7 @@ class _RentScreenState extends State<RentScreen> {
       );
     }
     final tenantSide = _asTenant && home.isTenant;
-    // Someone who owns nothing has nothing of their own to list, so the
-    // Properties tab shows what is going spare instead. That is also the one
-    // thing in this section worth opening when you are neither - looking for
-    // a flat needs no account at all, and hiding it behind a lease was wrong.
-    final browsing = tenantSide || !home.isOwner;
+
 
     return DefaultTabController(
       length: 4,
@@ -172,8 +169,8 @@ class _RentScreenState extends State<RentScreen> {
             ),
             _PropertiesTab(
               repository: _repository,
-              browsing: browsing,
-              canAdd: !tenantSide,
+              home: home,
+              startOnTenant: tenantSide,
               onChanged: _load,
             ),
             _PaymentsTab(
@@ -376,31 +373,104 @@ class _DashboardTab extends StatelessWidget {
 
 // --------------------------------------------------------------- properties
 
+/// Properties, from both ends.
+///
+/// A landlord can be a tenant somewhere else, so the two are tabs rather than
+/// a mode: what I let, and what I rent. Someone who is only one of the two
+/// opens on that one and can still look at the other.
 class _PropertiesTab extends StatefulWidget {
   const _PropertiesTab({
     required this.repository,
-    required this.browsing,
-    required this.canAdd,
+    required this.home,
+    required this.startOnTenant,
     required this.onChanged,
   });
 
   final RentRepository repository;
-
-  /// Showing what is going spare, rather than the caller's own.
-  final bool browsing;
-
-  /// A renter has nothing to add; everyone else might.
-  final bool canAdd;
-
-  /// Adding a property or a tenant changes the dashboard too.
+  final RentHome home;
+  final bool startOnTenant;
   final Future<void> Function() onChanged;
 
   @override
   State<_PropertiesTab> createState() => _PropertiesTabState();
 }
 
-class _PropertiesTabState extends State<_PropertiesTab> {
-  List<RentProperty>? _rows;
+class _PropertiesTabState extends State<_PropertiesTab>
+    with SingleTickerProviderStateMixin {
+  late final _tabs = TabController(
+    length: 2,
+    vsync: this,
+    initialIndex: widget.startOnTenant ? 1 : 0,
+  );
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: AppColors.background,
+          child: TabBar(
+            controller: _tabs,
+            labelColor: AppColors.navy,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.navy,
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            tabs: const [
+              Tab(text: 'Landlord'),
+              Tab(text: 'Tenant'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _LandlordProperties(
+                repository: widget.repository,
+                landlordCode: widget.home.landlordCode,
+                onChanged: widget.onChanged,
+              ),
+              _TenantProperties(
+                repository: widget.repository,
+                home: widget.home,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// What I let: the houses, and inside each one its floors and rooms.
+class _LandlordProperties extends StatefulWidget {
+  const _LandlordProperties({
+    required this.repository,
+    required this.landlordCode,
+    required this.onChanged,
+  });
+
+  final RentRepository repository;
+  final String landlordCode;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<_LandlordProperties> createState() => _LandlordPropertiesState();
+}
+
+class _LandlordPropertiesState extends State<_LandlordProperties> {
+  List<Building>? _buildings;
+
+  /// Rooms added before buildings existed, which belong to no house.
+  List<RentProperty> _loose = const [];
   String? _error;
 
   @override
@@ -409,35 +479,62 @@ class _PropertiesTabState extends State<_PropertiesTab> {
     _load();
   }
 
-  @override
-  void didUpdateWidget(_PropertiesTab old) {
-    super.didUpdateWidget(old);
-    if (old.browsing != widget.browsing) _load();
-  }
-
   Future<void> _load() async {
-    setState(() {
-      _rows = null;
-      _error = null;
-    });
+    setState(() => _error = null);
+    final token = AuthScope.of(context).token!;
     try {
-      final rows = widget.browsing
-          ? await widget.repository.listed()
-          : await widget.repository.myProperties(AuthScope.of(context).token!);
-      if (mounted) setState(() => _rows = rows);
+      final buildings = await widget.repository.buildings(token);
+      final mine = await widget.repository.myProperties(token);
+      if (!mounted) return;
+      setState(() {
+        _buildings = buildings;
+        _loose = [for (final p in mine) if (p.buildingId == null) p];
+      });
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
-          _rows = const [];
+          _buildings = const [];
           _error = e.message;
         });
       }
     }
   }
 
-  Future<void> _addProperty() async {
+  Future<void> _addBuilding() async {
     final added = await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+      MaterialPageRoute(builder: (_) => const AddBuildingScreen()),
+    );
+    if (added is! Building || !mounted) return;
+    await _load();
+    await widget.onChanged();
+    if (!mounted) return;
+    // Straight into it: a house with no rooms is not much use, and laying
+    // them out is the obvious next thing.
+    if (added.hasRooms) await _open(added);
+  }
+
+  Future<void> _open(Building building) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            BuildingScreen(building: building, repository: widget.repository),
+      ),
+    );
+    if (changed == true && mounted) {
+      await _load();
+      await widget.onChanged();
+    }
+  }
+
+  Future<void> _addTenantToLoose(RentProperty room) async {
+    final alsoVacant = [
+      for (final r in _loose)
+        if (r.id != room.id && !r.isOccupied) r,
+    ];
+    final added = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddTenantScreen(property: room, alsoVacant: alsoVacant),
+      ),
     );
     if (added != null && mounted) {
       await _load();
@@ -445,79 +542,370 @@ class _PropertiesTabState extends State<_PropertiesTab> {
     }
   }
 
-  Future<void> _addTenant(RentProperty property) async {
-    // The other empty rooms, so a family taking two can be put on one lease
-    // without going round twice.
-    final alsoVacant = [
-      for (final row in _rows ?? const <RentProperty>[])
-        if (row.id != property.id && !row.isOccupied) row,
-    ];
-    final added = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            AddTenantScreen(property: property, alsoVacant: alsoVacant),
+  @override
+  Widget build(BuildContext context) {
+    final buildings = _buildings;
+    if (buildings == null) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.green));
+    }
+
+    final body = (buildings.isEmpty && _loose.isEmpty)
+        ? _Message(
+            icon: Icons.apartment_outlined,
+            text: _error ??
+                'No houses yet. Add one, lay out its floors, and the rooms '
+                    'fill in from there.',
+            actionLabel: 'Add a house',
+            onAction: _addBuilding,
+          )
+        : RefreshIndicator(
+            onRefresh: _load,
+            color: AppColors.green,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 86),
+              children: [
+                if (widget.landlordCode.isNotEmpty) ...[
+                  _LandlordCode(code: widget.landlordCode),
+                  const SizedBox(height: 14),
+                ],
+                for (final building in buildings) ...[
+                  _BuildingCard(
+                      building: building, onTap: () => _open(building)),
+                  const SizedBox(height: 12),
+                ],
+                if (_loose.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  const Text('Not in a house',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Added before houses existed. They still let and still '
+                    'collect rent.',
+                    style: TextStyle(
+                        fontSize: 12.5, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  for (final room in _loose)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _PropertyCard(
+                        property: room,
+                        browsing: false,
+                        onAddTenant: () => _addTenantToLoose(room),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          );
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: body,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addBuilding,
+        backgroundColor: AppColors.green,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add house'),
       ),
     );
-    if (added != null && mounted) {
-      await _load();
-      await widget.onChanged();
+  }
+}
+
+/// What I rent, and what else is going spare.
+class _TenantProperties extends StatefulWidget {
+  const _TenantProperties({required this.repository, required this.home});
+
+  final RentRepository repository;
+  final RentHome home;
+
+  @override
+  State<_TenantProperties> createState() => _TenantPropertiesState();
+}
+
+class _TenantPropertiesState extends State<_TenantProperties> {
+  List<RentProperty>? _listed;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final rows = await widget.repository.listed();
+      if (mounted) setState(() => _listed = rows);
+    } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tenant added, and this month\u2019s '
-              'rent is on the Rent & Payments tab.')),
-        );
+        setState(() {
+          _listed = const [];
+          _error = e.message;
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final rows = _rows;
-    if (rows == null) {
+    final listed = _listed;
+    if (listed == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.green));
     }
+    final tenant = widget.home.tenant;
 
-    final body = rows.isEmpty
-        ? _Message(
-            icon: Icons.home_work_outlined,
-            text: _error ??
-                (widget.browsing
-                    ? 'Nothing listed to rent just now. Pull down to check '
-                        'again.'
-                    : 'No properties yet. Add your first one and the rest of '
-                        'this section comes to life.'),
-            actionLabel: widget.browsing ? 'Refresh' : 'Add a property',
-            onAction: widget.browsing ? _load : _addProperty,
-          )
-        : RefreshIndicator(
-            onRefresh: _load,
-            color: AppColors.green,
-            child: ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, widget.canAdd ? 86 : 16),
-              itemCount: rows.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) {
-                if (i == rows.length) return _ListNote(browsing: widget.browsing);
-                return _PropertyCard(
-                  property: rows[i],
-                  browsing: widget.browsing,
-                  onAddTenant: () => _addTenant(rows[i]),
-                );
-              },
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.green,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        children: [
+          if (tenant != null) ...[
+            const Text('Where you live',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy)),
+            const SizedBox(height: 10),
+            _Card(
+              title: tenant.contract.placeName,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (tenant.contract.propertyAddress.isNotEmpty)
+                    Text(tenant.contract.propertyAddress,
+                        style: const TextStyle(
+                            fontSize: 12.5, color: AppColors.textSecondary)),
+                  const SizedBox(height: 10),
+                  _Detail(
+                      label: 'Rent',
+                      value: '${formatNpr(tenant.contract.monthlyRent)} / month'),
+                  if (tenant.contract.ownerName != null)
+                    _Detail(label: 'Landlord', value: tenant.contract.ownerName!),
+                ],
+              ),
             ),
-          );
-
-    if (!widget.canAdd) return body;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: body,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addProperty,
-        backgroundColor: AppColors.green,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add property'),
+            const SizedBox(height: 20),
+          ],
+          Text(tenant == null ? 'Places to rent' : 'Looking for somewhere else?',
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy)),
+          const SizedBox(height: 10),
+          if (listed.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              child: Column(
+                children: [
+                  const Icon(Icons.search_off_rounded,
+                      size: 40, color: AppColors.textSecondary),
+                  const SizedBox(height: 10),
+                  Text(
+                    _error ?? 'Nothing listed to rent just now.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 13.5, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            for (final row in listed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _PropertyCard(property: row, browsing: true),
+              ),
+            _ListNote(browsing: true),
+          ],
+        ],
       ),
+    );
+  }
+}
+
+class _LandlordCode extends StatelessWidget {
+  const _LandlordCode({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.tileGreen,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.badge_outlined, size: 17, color: AppColors.green),
+          const SizedBox(width: 9),
+          const Text('Landlord ID',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+          const Spacer(),
+          Text(code,
+              style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: AppColors.green)),
+        ],
+      ),
+    );
+  }
+}
+
+class _BuildingCard extends StatelessWidget {
+  const _BuildingCard({required this.building, required this.onTap});
+
+  final Building building;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    building.kind == 'land'
+                        ? Icons.landscape_outlined
+                        : (building.kind == 'other'
+                            ? Icons.storefront_outlined
+                            : Icons.apartment_rounded),
+                    size: 20,
+                    color: AppColors.navy,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(building.name,
+                        style: const TextStyle(
+                            fontSize: 15.5, fontWeight: FontWeight.w800)),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 20, color: AppColors.textSecondary),
+                ],
+              ),
+              if (building.address.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  [building.address, building.city]
+                      .where((s) => s.isNotEmpty)
+                      .join(', '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 12.5, color: AppColors.textSecondary),
+                ),
+              ],
+              const SizedBox(height: 12),
+              if (!building.hasRooms)
+                const Text('Let whole',
+                    style: TextStyle(
+                        fontSize: 12.5, color: AppColors.textSecondary))
+              else if (building.roomsTotal == 0)
+                const Text('No rooms laid out yet - tap to add them',
+                    style: TextStyle(fontSize: 12.5, color: AppColors.orange))
+              else ...[
+                Row(
+                  children: [
+                    _Pill(
+                        text: '${building.roomsTotal} rooms',
+                        colour: AppColors.navy),
+                    const SizedBox(width: 8),
+                    _Pill(
+                        text: '${building.roomsLet} let',
+                        colour: AppColors.green),
+                    if (building.roomsVacant > 0) ...[
+                      const SizedBox(width: 8),
+                      _Pill(
+                          text: '${building.roomsVacant} vacant',
+                          colour: AppColors.blue),
+                    ],
+                  ],
+                ),
+                if (building.floors.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final floor in building.floors)
+                        _FloorChip(floor: floor),
+                    ],
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.colour});
+
+  final String text;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: colour.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 11.5, fontWeight: FontWeight.w700, color: colour)),
+    );
+  }
+}
+
+/// One floor at a glance: full, part let, or empty.
+class _FloorChip extends StatelessWidget {
+  const _FloorChip({required this.floor});
+
+  final FloorSummary floor;
+
+  @override
+  Widget build(BuildContext context) {
+    final full = floor.let == floor.rooms;
+    final empty = floor.let == 0;
+    final colour =
+        full ? AppColors.green : (empty ? AppColors.textSecondary : AppColors.orange);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: colour.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text('F${floor.floor}  ${floor.let}/${floor.rooms}',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w700, color: colour)),
     );
   }
 }

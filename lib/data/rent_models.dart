@@ -10,6 +10,73 @@ double? _toDouble(dynamic value) => switch (value) {
 DateTime? _toDate(dynamic value) =>
     value is String ? DateTime.tryParse(value) : null;
 
+/// How one floor of a building is doing.
+class FloorSummary {
+  const FloorSummary({required this.floor, required this.rooms, required this.let});
+
+  final int floor;
+  final int rooms;
+  final int let;
+
+  int get vacant => rooms - let;
+
+  factory FloorSummary.fromJson(Map<String, dynamic> json) => FloorSummary(
+        floor: json['floor'] as int? ?? 0,
+        rooms: json['rooms'] as int? ?? 0,
+        let: json['let'] as int? ?? 0,
+      );
+}
+
+/// A house, a plot, or whatever else is let. Named by the landlord.
+class Building {
+  const Building({
+    required this.id,
+    required this.name,
+    required this.kind,
+    this.kindDisplay = '',
+    this.address = '',
+    this.city = '',
+    this.landmark = '',
+    this.notes = '',
+    this.roomsTotal = 0,
+    this.roomsLet = 0,
+    this.floors = const [],
+  });
+
+  final int id;
+  final String name;
+
+  /// 'house', 'land' or 'other'. Only a house has floors and rooms.
+  final String kind;
+  final String kindDisplay;
+  final String address;
+  final String city;
+  final String landmark;
+  final String notes;
+  final int roomsTotal;
+  final int roomsLet;
+  final List<FloorSummary> floors;
+
+  bool get hasRooms => kind == 'house';
+  int get roomsVacant => roomsTotal - roomsLet;
+
+  factory Building.fromJson(Map<String, dynamic> json) => Building(
+        id: json['id'] as int? ?? 0,
+        name: json['name'] as String? ?? '',
+        kind: json['kind'] as String? ?? 'house',
+        kindDisplay: json['kind_display'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        city: json['city'] as String? ?? '',
+        landmark: json['landmark'] as String? ?? '',
+        notes: json['notes'] as String? ?? '',
+        roomsTotal: json['rooms_total'] as int? ?? 0,
+        roomsLet: json['rooms_let'] as int? ?? 0,
+        floors: (json['floors'] as List<dynamic>? ?? const [])
+            .map((e) => FloorSummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
 class RentProperty {
   const RentProperty({
     required this.id,
@@ -27,6 +94,10 @@ class RentProperty {
     this.description = '',
     this.imageUrl,
     this.isOccupied = false,
+    this.state = '',
+    this.buildingId,
+    this.buildingName = '',
+    this.floor,
     this.tenantName,
     this.rentState,
   });
@@ -46,6 +117,15 @@ class RentProperty {
   final String description;
   final String? imageUrl;
   final bool isOccupied;
+
+  /// 'Vacant' or 'Occupied', the words the landlord's own sheet uses.
+  final String state;
+
+  /// Which building and floor it sits on. Null on rooms added before
+  /// buildings existed.
+  final int? buildingId;
+  final String buildingName;
+  final int? floor;
 
   /// Only ever set for the owner of the property. Someone browsing for a
   /// place to rent never learns who is already in one.
@@ -70,6 +150,10 @@ class RentProperty {
         description: json['description'] as String? ?? '',
         imageUrl: json['image'] as String?,
         isOccupied: json['is_occupied'] as bool? ?? false,
+        state: json['state'] as String? ?? '',
+        buildingId: json['building'] as int?,
+        buildingName: json['building_name'] as String? ?? '',
+        floor: json['floor'] as int?,
         tenantName: json['tenant_name'] as String?,
         rentState: json['rent_state'] as String?,
       );
@@ -194,6 +278,7 @@ class RentContract {
 /// The owner's dashboard numbers.
 class OwnerSummary {
   const OwnerSummary({
+    this.buildings = 0,
     required this.properties,
     required this.occupied,
     required this.vacant,
@@ -203,6 +288,7 @@ class OwnerSummary {
     required this.overdueAmount,
   });
 
+  final int buildings;
   final int properties;
   final int occupied;
   final int vacant;
@@ -212,6 +298,7 @@ class OwnerSummary {
   final double overdueAmount;
 
   factory OwnerSummary.fromJson(Map<String, dynamic> json) => OwnerSummary(
+        buildings: json['buildings'] as int? ?? 0,
         properties: json['properties'] as int? ?? 0,
         occupied: json['occupied'] as int? ?? 0,
         vacant: json['vacant'] as int? ?? 0,
@@ -251,12 +338,17 @@ class RentHome {
   const RentHome({
     required this.isOwner,
     required this.isTenant,
+    this.landlordCode = '',
     this.owner,
     this.tenant,
   });
 
   final bool isOwner;
   final bool isTenant;
+
+  /// The landlord's code, for quoting to the office. Derived from the
+  /// account, not chosen.
+  final String landlordCode;
   final OwnerSummary? owner;
   final TenantSummary? tenant;
 
@@ -265,6 +357,7 @@ class RentHome {
   factory RentHome.fromJson(Map<String, dynamic> json) => RentHome(
         isOwner: json['is_owner'] as bool? ?? false,
         isTenant: json['is_tenant'] as bool? ?? false,
+        landlordCode: json['landlord_code'] as String? ?? '',
         owner: json['owner'] == null
             ? null
             : OwnerSummary.fromJson(json['owner'] as Map<String, dynamic>),
