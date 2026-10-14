@@ -118,13 +118,12 @@ class _RentScreenState extends State<RentScreen> {
               ),
       );
     }
-    if (home.isNeither) {
-      return _Shell(
-        child: _NothingYet(onRefresh: _load, onAddProperty: _addFirstProperty),
-      );
-    }
-
     final tenantSide = _asTenant && home.isTenant;
+    // Someone who owns nothing has nothing of their own to list, so the
+    // Properties tab shows what is going spare instead. That is also the one
+    // thing in this section worth opening when you are neither - looking for
+    // a flat needs no account at all, and hiding it behind a lease was wrong.
+    final browsing = tenantSide || !home.isOwner;
 
     return DefaultTabController(
       length: 4,
@@ -165,15 +164,30 @@ class _RentScreenState extends State<RentScreen> {
         ),
         body: TabBarView(
           children: [
-            _DashboardTab(home: home, asTenant: tenantSide, onRefresh: _load),
+            _DashboardTab(
+              home: home,
+              asTenant: tenantSide,
+              onRefresh: _load,
+              onAddProperty: _addFirstProperty,
+            ),
             _PropertiesTab(
-                repository: _repository, asTenant: tenantSide, onChanged: _load),
+              repository: _repository,
+              browsing: browsing,
+              canAdd: !tenantSide,
+              onChanged: _load,
+            ),
             _PaymentsTab(
-                repository: _repository, asTenant: tenantSide, onChanged: _load),
+              repository: _repository,
+              asTenant: tenantSide,
+              onChanged: _load,
+              settled: !home.isNeither,
+            ),
             _ContractTab(
-                repository: _repository,
-                asTenant: tenantSide,
-                onChanged: _load),
+              repository: _repository,
+              asTenant: tenantSide,
+              onChanged: _load,
+              settled: !home.isNeither,
+            ),
           ],
         ),
       ),
@@ -208,11 +222,13 @@ class _DashboardTab extends StatelessWidget {
     required this.home,
     required this.asTenant,
     required this.onRefresh,
+    required this.onAddProperty,
   });
 
   final RentHome home;
   final bool asTenant;
   final Future<void> Function() onRefresh;
+  final VoidCallback onAddProperty;
 
   @override
   Widget build(BuildContext context) {
@@ -221,12 +237,51 @@ class _DashboardTab extends StatelessWidget {
       color: AppColors.green,
       child: ListView(
         padding: const EdgeInsets.all(16),
-        children: asTenant
-            ? _tenant(context, home.tenant!)
-            : _owner(context, home.owner!),
+        children: home.isNeither
+            ? _gettingStarted(context)
+            : (asTenant
+                ? _tenant(context, home.tenant!)
+                : _owner(context, home.owner!)),
       ),
     );
   }
+
+  /// Nothing to report yet, so the dashboard explains the two ways in rather
+  /// than drawing zeroes.
+  List<Widget> _gettingStarted(BuildContext context) => [
+        const _StartCard(
+          icon: Icons.vpn_key_outlined,
+          tone: AppColors.green,
+          tint: AppColors.tileGreen,
+          title: 'You let a place out',
+          body: 'Add your first property and the rest of this section comes to '
+              'life - who is in it, what they owe, and the contract.',
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 48,
+          child: _AddPropertyButton(onPressed: onAddProperty),
+        ),
+        const SizedBox(height: 16),
+        const _StartCard(
+          icon: Icons.person_outline,
+          tone: AppColors.blue,
+          tint: AppColors.tileBlue,
+          title: 'You rent a place',
+          body: 'Your landlord adds you to the tenancy, and your rent and '
+              'contract turn up here by themselves. Make sure they have the '
+              'number you signed in with.',
+        ),
+        const SizedBox(height: 16),
+        const _StartCard(
+          icon: Icons.search_rounded,
+          tone: AppColors.orange,
+          tint: AppColors.tileOrange,
+          title: 'Still looking',
+          body: 'Places going spare are on the Properties tab. No account '
+              'needed to look.',
+        ),
+      ];
 
   List<Widget> _owner(BuildContext context, OwnerSummary s) {
     final outstanding = s.expectedThisMonth - s.collectedThisMonth;
@@ -324,12 +379,18 @@ class _DashboardTab extends StatelessWidget {
 class _PropertiesTab extends StatefulWidget {
   const _PropertiesTab({
     required this.repository,
-    required this.asTenant,
+    required this.browsing,
+    required this.canAdd,
     required this.onChanged,
   });
 
   final RentRepository repository;
-  final bool asTenant;
+
+  /// Showing what is going spare, rather than the caller's own.
+  final bool browsing;
+
+  /// A renter has nothing to add; everyone else might.
+  final bool canAdd;
 
   /// Adding a property or a tenant changes the dashboard too.
   final Future<void> Function() onChanged;
@@ -351,7 +412,7 @@ class _PropertiesTabState extends State<_PropertiesTab> {
   @override
   void didUpdateWidget(_PropertiesTab old) {
     super.didUpdateWidget(old);
-    if (old.asTenant != widget.asTenant) _load();
+    if (old.browsing != widget.browsing) _load();
   }
 
   Future<void> _load() async {
@@ -360,9 +421,7 @@ class _PropertiesTabState extends State<_PropertiesTab> {
       _error = null;
     });
     try {
-      // An owner sees their own; a tenant sees what is going spare, because
-      // the only property question a renter has is "what else is there".
-      final rows = widget.asTenant
+      final rows = widget.browsing
           ? await widget.repository.listed()
           : await widget.repository.myProperties(AuthScope.of(context).token!);
       if (mounted) setState(() => _rows = rows);
@@ -413,31 +472,33 @@ class _PropertiesTabState extends State<_PropertiesTab> {
         ? _Message(
             icon: Icons.home_work_outlined,
             text: _error ??
-                (widget.asTenant
-                    ? 'Nothing listed to rent just now.'
+                (widget.browsing
+                    ? 'Nothing listed to rent just now. Pull down to check '
+                        'again.'
                     : 'No properties yet. Add your first one and the rest of '
                         'this section comes to life.'),
-            actionLabel: widget.asTenant ? 'Refresh' : 'Add a property',
-            onAction: widget.asTenant ? _load : _addProperty,
+            actionLabel: widget.browsing ? 'Refresh' : 'Add a property',
+            onAction: widget.browsing ? _load : _addProperty,
           )
         : RefreshIndicator(
             onRefresh: _load,
             color: AppColors.green,
             child: ListView.separated(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, widget.asTenant ? 16 : 86),
-              itemCount: rows.length,
+              padding: EdgeInsets.fromLTRB(16, 16, 16, widget.canAdd ? 86 : 16),
+              itemCount: rows.length + 1,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _PropertyCard(
-                property: rows[i],
-                browsing: widget.asTenant,
-                onAddTenant: () => _addTenant(rows[i]),
-              ),
+              itemBuilder: (_, i) {
+                if (i == rows.length) return _ListNote(browsing: widget.browsing);
+                return _PropertyCard(
+                  property: rows[i],
+                  browsing: widget.browsing,
+                  onAddTenant: () => _addTenant(rows[i]),
+                );
+              },
             ),
           );
 
-    // An owner always has somewhere to add the next one; a renter is browsing
-    // and has nothing to add.
-    if (widget.asTenant) return body;
+    if (!widget.canAdd) return body;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: body,
@@ -609,10 +670,15 @@ class _PaymentsTab extends StatefulWidget {
     required this.repository,
     required this.asTenant,
     required this.onChanged,
+    required this.settled,
   });
 
   final RentRepository repository;
   final bool asTenant;
+
+  /// Whether the caller has a property or a lease at all. Empty means two
+  /// different things, and they deserve two different sentences.
+  final bool settled;
 
   /// Recording a payment changes the dashboard, so it reloads too.
   final Future<void> Function() onChanged;
@@ -684,7 +750,11 @@ class _PaymentsTabState extends State<_PaymentsTab> {
     if (rows.isEmpty) {
       return _Message(
         icon: Icons.receipt_long_outlined,
-        text: _error ?? 'No rent recorded yet.',
+        text: _error ??
+            (widget.settled
+                ? 'No rent recorded yet. It appears here once a month is due.'
+                : 'Rent shows up here once you have a property with someone in '
+                    'it, or a landlord puts you on a tenancy.'),
         actionLabel: 'Refresh',
         onAction: _load,
       );
@@ -827,11 +897,15 @@ class _ContractTab extends StatefulWidget {
     required this.repository,
     required this.asTenant,
     required this.onChanged,
+    required this.settled,
   });
 
   final RentRepository repository;
   final bool asTenant;
   final Future<void> Function() onChanged;
+
+  /// See the note on _PaymentsTab.settled.
+  final bool settled;
 
   @override
   State<_ContractTab> createState() => _ContractTabState();
@@ -880,7 +954,11 @@ class _ContractTabState extends State<_ContractTab> {
     if (rows.isEmpty) {
       return _Message(
         icon: Icons.description_outlined,
-        text: _error ?? 'No contracts yet.',
+        text: _error ??
+            (widget.settled
+                ? 'No contracts yet. One appears when a tenancy starts.'
+                : 'The agreement appears here once you let a place or rent '
+                    'one.'),
         actionLabel: 'Refresh',
         onAction: _load,
       );
@@ -1242,6 +1320,108 @@ class _Note extends StatelessWidget {
   }
 }
 
+class _StartCard extends StatelessWidget {
+  const _StartCard({
+    required this.icon,
+    required this.tone,
+    required this.tint,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color tone;
+  final Color tint;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 36,
+                width: 36,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: tint),
+                child: Icon(icon, size: 18, color: tone),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(body,
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddPropertyButton extends StatelessWidget {
+  const _AddPropertyButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.add_rounded, size: 20),
+        label: const Text('Add a property',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+}
+
+/// The line under a list that says what it is, so a renter does not wonder
+/// why these three flats are the only ones in Kathmandu.
+class _ListNote extends StatelessWidget {
+  const _ListNote({required this.browsing});
+
+  final bool browsing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        browsing
+            ? 'These are the places Pakka Homes has free right now. Call us if '
+                'none of them fit.'
+            : 'Every property you let. Add a tenant to one and its rent starts '
+                'showing under Rent & Payments.',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+      ),
+    );
+  }
+}
+
 class _Message extends StatelessWidget {
   const _Message({
     required this.icon,
@@ -1344,160 +1524,6 @@ class _SignedOut extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Signed in, but owning nothing and renting nothing.
-///
-/// Both ways in are offered rather than described: a landlord adds their first
-/// property right here, and a renter is told the one thing they need to know -
-/// that their landlord puts them on, and it appears by itself when they do.
-class _NothingYet extends StatelessWidget {
-  const _NothingYet({required this.onRefresh, required this.onAddProperty});
-
-  final Future<void> Function() onRefresh;
-  final VoidCallback onAddProperty;
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      color: AppColors.green,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-        children: [
-          const Icon(Icons.home_work_outlined,
-              size: 46, color: AppColors.textSecondary),
-          const SizedBox(height: 12),
-          const Text(
-            'Nothing here yet',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.navy),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'This is where properties, rent and contracts live - whether you '
-            'let a place or rent one.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      height: 38,
-                      width: 38,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.tileGreen,
-                      ),
-                      child: const Icon(Icons.vpn_key_outlined,
-                          size: 19, color: AppColors.green),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text('You let a place out',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w800)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Add your first property and the rest of this section comes '
-                  'to life - who is in it, what they owe, and the contract.',
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: onAddProperty,
-                    icon: const Icon(Icons.add_rounded, size: 20),
-                    label: const Text('Add a property',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      height: 38,
-                      width: 38,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.tileBlue,
-                      ),
-                      child: const Icon(Icons.person_outline,
-                          size: 19, color: AppColors.blue),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text('You rent a place',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w800)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Your landlord adds you to the tenancy, and your rent and '
-                  'contract turn up here by themselves. Make sure they have '
-                  'the number you signed in with.',
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary, height: 1.4),
-                ),
-                const SizedBox(height: 10),
-                TextButton.icon(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh_rounded, size: 17),
-                  label: const Text('Check again'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
