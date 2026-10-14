@@ -10,13 +10,12 @@ import 'auth_screen.dart';
 import 'category_screen.dart';
 import 'maid_services_screen.dart';
 import 'my_orders_screen.dart';
+import 'rent_screen.dart';
 import 'subcategory_screen.dart';
 
 /// What the four service tiles offer.
 ///
-/// Grocery, Maid and Maintenance are live. Rent is deliberately inactive: it
-/// is drawn dimmed and says so, rather than looking tappable and then doing
-/// nothing.
+/// All four tiles are live now.
 class _Service {
   const _Service({
     required this.title,
@@ -68,6 +67,12 @@ const _maintenanceSlugs = [
 
 /// Maid is the one category you pick several of, so it has its own screen
 /// rather than the usual grid of tiles that each open something.
+void _openRent(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const RentScreen()),
+  );
+}
+
 void _openMaid(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const MaidServicesScreen()),
@@ -113,6 +118,7 @@ const _services = <_Service>[
     icon: Icons.key_rounded,
     color: AppColors.orange,
     tileColor: AppColors.tileOrange,
+    open: _openRent,
   ),
   _Service(
     title: 'Maid',
