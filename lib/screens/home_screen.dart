@@ -8,14 +8,15 @@ import '../theme/app_colors.dart';
 import 'account_screen.dart';
 import 'auth_screen.dart';
 import 'category_screen.dart';
+import 'maid_services_screen.dart';
 import 'my_orders_screen.dart';
 import 'subcategory_screen.dart';
 
 /// What the four service tiles offer.
 ///
-/// Grocery and Maintenance are live. Rent and Maid are deliberately inactive:
-/// they are drawn dimmed and say so, rather than looking tappable and then
-/// doing nothing.
+/// Grocery, Maid and Maintenance are live. Rent is deliberately inactive: it
+/// is drawn dimmed and says so, rather than looking tappable and then doing
+/// nothing.
 class _Service {
   const _Service({
     required this.title,
@@ -65,6 +66,14 @@ const _maintenanceSlugs = [
   'waterproofing',
 ];
 
+/// Maid is the one category you pick several of, so it has its own screen
+/// rather than the usual grid of tiles that each open something.
+void _openMaid(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const MaidServicesScreen()),
+  );
+}
+
 void _openMaintenance(BuildContext context) {
   Navigator.of(context).push(
     MaterialPageRoute(
@@ -110,6 +119,7 @@ const _services = <_Service>[
     icon: Icons.cleaning_services_rounded,
     color: AppColors.purple,
     tileColor: AppColors.tilePurple,
+    open: _openMaid,
   ),
   _Service(
     title: 'Maintenance',

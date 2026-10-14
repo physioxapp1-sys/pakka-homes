@@ -11,6 +11,9 @@ class BookingRequest {
     this.notes = '',
     this.categorySlug,
     this.subcategorySlug,
+    this.subcategorySlugs = const [],
+    this.preferredSlots = const [],
+    this.engagement,
     this.providerSlug,
   });
 
@@ -26,6 +29,18 @@ class BookingRequest {
   /// has to travel with them.
   final String? categorySlug;
   final String? subcategorySlug;
+
+  /// Several services on one booking - maid work is hired as a bundle. The
+  /// first is the headline one on the server.
+  final List<String> subcategorySlugs;
+
+  /// Times that suit, most-wanted first. A household will take morning or
+  /// evening and not mind which, which [slot] alone cannot say.
+  final List<String> preferredSlots;
+
+  /// 'full_time', 'part_time' or 'one_time'. Null for a one-off job, where
+  /// the question does not arise.
+  final String? engagement;
   final String? providerSlug;
 
   Map<String, dynamic> toJson() => {
@@ -42,6 +57,9 @@ class BookingRequest {
         if (notes.isNotEmpty) 'notes': notes,
         if (categorySlug != null) 'category_slug': categorySlug,
         if (subcategorySlug != null) 'subcategory_slug': subcategorySlug,
+        if (subcategorySlugs.isNotEmpty) 'subcategory_slugs': subcategorySlugs,
+        if (preferredSlots.isNotEmpty) 'preferred_slots': preferredSlots,
+        if (engagement != null) 'engagement': engagement,
         if (providerSlug != null) 'provider_slug': providerSlug,
       };
 }
@@ -76,6 +94,9 @@ class CustomerBooking {
     this.slotDisplay = '',
     this.scheduledDate,
     this.subcategoryName,
+    this.serviceNames = const [],
+    this.engagementDisplay = '',
+    this.preferredSlotsDisplay = '',
     this.providerName,
     this.quotedAmount,
     this.finalAmount,
@@ -94,6 +115,16 @@ class CustomerBooking {
   /// Null until the catalog link resolves; the job title falls back to this.
   final String? subcategoryName;
 
+  /// Everything asked for. A maid booking names several; everything else
+  /// names one.
+  final List<String> serviceNames;
+
+  /// "Full time" / "Part time", empty for a one-off job.
+  final String engagementDisplay;
+
+  /// The times that suit, in words. Falls back to the single slot.
+  final String preferredSlotsDisplay;
+
   /// Null until dispatch assigns someone.
   final String? providerName;
   final double? quotedAmount;
@@ -101,6 +132,16 @@ class CustomerBooking {
   final DateTime? createdAt;
 
   bool get isOpen => const {'pending', 'confirmed', 'in_progress'}.contains(status);
+
+  /// What to call this booking in a list.
+  String get title => serviceNames.isNotEmpty
+      ? serviceNames.join(', ')
+      : (subcategoryName ?? 'Service booking');
+
+  /// The times that suit. Falls back to the single slot for bookings taken
+  /// before more than one could be given.
+  String get timesDisplay =>
+      preferredSlotsDisplay.isNotEmpty ? preferredSlotsDisplay : slotDisplay;
 
   factory CustomerBooking.fromJson(Map<String, dynamic> json) => CustomerBooking(
         id: json['id'] as int? ?? 0,
@@ -112,6 +153,11 @@ class CustomerBooking {
         slotDisplay: json['slot_display'] as String? ?? '',
         scheduledDate: _toDate(json['scheduled_date']),
         subcategoryName: json['subcategory_name'] as String?,
+        serviceNames: (json['service_names'] as List<dynamic>? ?? const [])
+            .map((e) => '$e')
+            .toList(),
+        engagementDisplay: json['engagement_display'] as String? ?? '',
+        preferredSlotsDisplay: json['preferred_slots_display'] as String? ?? '',
         providerName: json['provider_name'] as String?,
         quotedAmount: _toDouble(json['quoted_amount']),
         finalAmount: _toDouble(json['final_amount']),
@@ -136,4 +182,12 @@ const kBookingSlots = <(String, String)>[
   ('morning', 'Morning (8am - 12pm)'),
   ('afternoon', 'Afternoon (12pm - 4pm)'),
   ('evening', 'Evening (4pm - 8pm)'),
+];
+
+/// How often the help is wanted. Only asked where it changes the job - maid
+/// work - and the labels match the backend's Booking.Engagement.
+const kEngagements = <(String, String)>[
+  ('full_time', 'Full time'),
+  ('part_time', 'Part time'),
+  ('one_time', 'One time'),
 ];

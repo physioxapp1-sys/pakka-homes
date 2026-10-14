@@ -13,6 +13,9 @@ class BookingScreen extends StatefulWidget {
     required this.title,
     this.categorySlug,
     this.subcategorySlug,
+    this.subcategorySlugs = const [],
+    this.serviceNames = const [],
+    this.asksEngagement = false,
     this.priceLabel,
     this.providerSlug,
     this.providerName,
@@ -21,6 +24,18 @@ class BookingScreen extends StatefulWidget {
   final String title;
   final String? categorySlug;
   final String? subcategorySlug;
+
+  /// Several services on one booking, in the order they were picked. Maid
+  /// work is hired as a bundle; everything else sends one.
+  final List<String> subcategorySlugs;
+
+  /// Their names, to show what is being booked before it is booked.
+  final List<String> serviceNames;
+
+  /// Whether to ask full time or part time, and let more than one time suit.
+  /// A plumber comes once, so the question would be noise; a maid comes every
+  /// day or a few hours of it, and the answer changes the price and the person.
+  final bool asksEngagement;
 
   /// The server-formatted rate for this job, e.g. "NPR 600 per visit".
   /// Null, or "On request", means it is priced after a visit.
@@ -47,6 +62,8 @@ class _BookingScreenState extends State<BookingScreen> {
 
   DateTime? _date;
   String _slot = 'anytime';
+  String _engagement = 'part_time';
+  final _preferredSlots = <String>{};
   bool _submitting = false;
 
   /// Field errors returned by the server, so DRF's validation surfaces on the
@@ -107,6 +124,12 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _submit() async {
     setState(() => _serverErrors = const {});
     if (!_formKey.currentState!.validate()) return;
+    if (widget.asksEngagement && _preferredSlots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Pick at least one time that suits you.'),
+      ));
+      return;
+    }
 
     setState(() => _submitting = true);
     try {
@@ -122,6 +145,13 @@ class _BookingScreenState extends State<BookingScreen> {
           notes: _notes.text,
           categorySlug: widget.categorySlug,
           subcategorySlug: widget.subcategorySlug,
+          subcategorySlugs: widget.subcategorySlugs,
+          // Order matters: the first is the one the server treats as the
+          // headline time, and the chips are kept in catalog order.
+          preferredSlots: widget.asksEngagement
+              ? [for (final (v, _) in kBookingSlots) if (_preferredSlots.contains(v)) v]
+              : const [],
+          engagement: widget.asksEngagement ? _engagement : null,
           providerSlug: widget.providerSlug,
         ),
       );
@@ -214,6 +244,31 @@ class _BookingScreenState extends State<BookingScreen> {
               priceLabel: widget.priceLabel,
             ),
             const SizedBox(height: 12),
+            if (widget.serviceNames.length > 1) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.tilePurple,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${widget.serviceNames.length} services',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.purple)),
+                    const SizedBox(height: 3),
+                    Text(widget.serviceNames.join(' · '),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textPrimary)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (!AuthScope.of(context).isSignedIn) ...[
               _SignInPrompt(onSignIn: _signIn),
               const SizedBox(height: 12),
@@ -257,22 +312,62 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 4),
             _DateRow(date: _date, onPick: _pickDate, onClear: () => setState(() => _date = null)),
+            if (widget.asksEngagement) ...[
+              const SizedBox(height: 14),
+              const Text('How often do you need them?',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final (value, label) in kEngagements)
+                    ChoiceChip(
+                      label: Text(label, style: const TextStyle(fontSize: 12)),
+                      selected: _engagement == value,
+                      onSelected: (_) => setState(() => _engagement = value),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 14),
-            const Text('Preferred time',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(
+              widget.asksEngagement
+                  ? 'Which times suit? Pick any that do.'
+                  : 'Preferred time',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 for (final (value, label) in kBookingSlots)
-                  ChoiceChip(
-                    label: Text(label, style: const TextStyle(fontSize: 12)),
-                    selected: _slot == value,
-                    onSelected: (_) => setState(() => _slot = value),
-                    selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                  ),
+                  if (!widget.asksEngagement || value != 'anytime')
+                    widget.asksEngagement
+                        ? FilterChip(
+                            label: Text(label, style: const TextStyle(fontSize: 12)),
+                            selected: _preferredSlots.contains(value),
+                            onSelected: (on) => setState(() => on
+                                ? _preferredSlots.add(value)
+                                : _preferredSlots.remove(value)),
+                            selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                          )
+                        : ChoiceChip(
+                            label: Text(label, style: const TextStyle(fontSize: 12)),
+                            selected: _slot == value,
+                            onSelected: (_) => setState(() => _slot = value),
+                            selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                          ),
               ],
             ),
+            if (widget.asksEngagement && _preferredSlots.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Pick at least one, or we will not know when to send someone.',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                ),
+              ),
             const SizedBox(height: 14),
             _Field(
               controller: _notes,

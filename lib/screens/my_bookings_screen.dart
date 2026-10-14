@@ -370,7 +370,8 @@ class BookingCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  booking.subcategoryName ?? 'Service booking',
+                  // Every service it names: a maid booking is several.
+                  booking.title,
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
                 ),
               ),
@@ -406,9 +407,9 @@ class BookingCard extends StatelessWidget {
           _Line(
             icon: Icons.event_outlined,
             text: booking.scheduledDate == null
-                ? 'Date to be confirmed${booking.slotDisplay.isEmpty ? '' : ' · ${booking.slotDisplay}'}'
+                ? 'Date to be confirmed${booking.timesDisplay.isEmpty ? '' : ' · ${booking.timesDisplay}'}'
                 : '${_date(booking.scheduledDate!)}'
-                    '${booking.slotDisplay.isEmpty ? '' : ' · ${booking.slotDisplay}'}',
+                    '${booking.timesDisplay.isEmpty ? '' : ' · ${booking.timesDisplay}'}',
           ),
           _Line(icon: Icons.location_on_outlined, text: booking.address),
           if (amount != null)
