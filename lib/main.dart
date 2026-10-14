@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'data/auth_repository.dart';
 import 'data/auth_scope.dart';
 import 'data/cart.dart';
+import 'data/service_cart.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_colors.dart';
 
@@ -11,19 +12,30 @@ Future<void> main() async {
 
   final auth = AuthRepository();
   final cart = Cart();
-  // Both restore from the device. Browsing needs neither, so a failure in
-  // either must not block startup - each swallows its own errors.
+  final serviceCart = ServiceCart();
+  // All three restore from the device. Browsing needs none of them, so a
+  // failure in any must not block startup - each swallows its own errors.
   await auth.restore();
   await cart.restore();
+  await serviceCart.restore();
 
-  runApp(PakkaHomesApp(auth: auth, cart: cart));
+  runApp(PakkaHomesApp(auth: auth, cart: cart, serviceCart: serviceCart));
 }
 
 class PakkaHomesApp extends StatelessWidget {
-  const PakkaHomesApp({super.key, required this.auth, required this.cart});
+  const PakkaHomesApp({
+    super.key,
+    required this.auth,
+    required this.cart,
+    required this.serviceCart,
+  });
 
   final AuthRepository auth;
+
+  /// Groceries, and services. Separate because a basket of tomatoes becomes an
+  /// order with a delivery slot, and a list of services becomes one booking.
   final Cart cart;
+  final ServiceCart serviceCart;
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +43,19 @@ class PakkaHomesApp extends StatelessWidget {
       auth: auth,
       child: CartScope(
         cart: cart,
-        child: MaterialApp(
-          title: 'Pakka Homes',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorSchemeSeed: AppColors.green,
-            scaffoldBackgroundColor: AppColors.background,
-            useMaterial3: true,
-            fontFamily: 'Roboto',
+        child: ServiceCartScope(
+          cart: serviceCart,
+          child: MaterialApp(
+            title: 'Pakka Homes',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorSchemeSeed: AppColors.green,
+              scaffoldBackgroundColor: AppColors.background,
+              useMaterial3: true,
+              fontFamily: 'Roboto',
+            ),
+            home: const HomeScreen(),
           ),
-          home: const HomeScreen(),
         ),
       ),
     );

@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
+import '../data/service_cart.dart';
 import '../theme/app_colors.dart';
-import 'booking_screen.dart';
+import 'service_cart_screen.dart';
+import 'service_detail_screen.dart';
 
 /// Picking what the help is for.
 ///
 /// Unlike every other category, this one takes more than one: a household
 /// hires a person, not a task, and that person cooks and does the dishes and
-/// the laundry. So the tiles tick rather than open, and the booking that
-/// follows names all of them.
+/// the laundry. So services collect in a cart the way groceries do - tap one
+/// to read what it is and what it costs, or add it straight from the tile -
+/// and the booking at the end names all of them.
 class MaidServicesScreen extends StatefulWidget {
   const MaidServicesScreen({super.key});
 
@@ -26,7 +29,6 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
 
   List<RemoteSubcategory>? _services;
   String? _error;
-  final _picked = <String>[];
 
   @override
   void initState() {
@@ -58,37 +60,27 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
     }
   }
 
-  void _toggle(RemoteSubcategory service) {
-    setState(() {
-      // A list, not a set: the order they were picked in is the order they
-      // are sent, and the first becomes the headline service on the booking.
-      if (!_picked.remove(service.slug)) _picked.add(service.slug);
-    });
-  }
-
-  void _continue() {
-    final bySlug = {for (final s in _services ?? const []) s.slug: s};
-    final chosen = [
-      for (final slug in _picked)
-        if (bySlug.containsKey(slug)) bySlug[slug]!,
-    ];
-
+  void _open(RemoteSubcategory service) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BookingScreen(
-          title: chosen.length == 1 ? chosen.first.name : 'Maid service',
+        builder: (_) => ServiceDetailScreen(
+          service: service,
           categorySlug: MaidServicesScreen.categorySlug,
-          subcategorySlugs: [for (final s in chosen) s.slug],
-          serviceNames: [for (final s in chosen) s.name],
-          asksEngagement: true,
-          priceLabel: chosen.length == 1 ? chosen.first.displayRate : null,
+          categoryName: 'Maid service',
         ),
       ),
     );
   }
 
+  void _openCart() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ServiceCartScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cart = ServiceCartScope.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -96,16 +88,26 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
         title: const Text('Maid service'),
+        actions: [
+          IconButton(
+            onPressed: _openCart,
+            icon: Badge(
+              isLabelVisible: !cart.isEmpty,
+              label: Text('${cart.count}'),
+              backgroundColor: const Color(0xFFE23744),
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+          ),
+        ],
       ),
-      body: _body(),
-      bottomNavigationBar: _picked.isEmpty ? null : _ContinueBar(
-        count: _picked.length,
-        onPressed: _continue,
-      ),
+      body: _body(cart),
+      bottomNavigationBar: cart.isEmpty
+          ? null
+          : _ContinueBar(count: cart.count, onPressed: _openCart),
     );
   }
 
-  Widget _body() {
+  Widget _body(ServiceCart cart) {
     final services = _services;
     if (services == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.green));
@@ -160,8 +162,11 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
               delegate: SliverChildBuilderDelegate(
                 (_, i) => _ServiceTile(
                   service: services[i],
-                  picked: _picked.contains(services[i].slug),
-                  onTap: () => _toggle(services[i]),
+                  picked: cart.contains(
+                      MaidServicesScreen.categorySlug, services[i].slug),
+                  onTap: () => _open(services[i]),
+                  onAdd: () => cart.toggle(services[i],
+                      categorySlug: MaidServicesScreen.categorySlug),
                 ),
                 childCount: services.length,
               ),
@@ -189,7 +194,7 @@ class _Intro extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   color: AppColors.navy)),
           SizedBox(height: 4),
-          Text('Pick as many as you like - one person can cover several.',
+          Text('Tap one to read what it covers, or add it straight away.',
               style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
         ],
       ),
@@ -202,11 +207,16 @@ class _ServiceTile extends StatelessWidget {
     required this.service,
     required this.picked,
     required this.onTap,
+    required this.onAdd,
   });
 
   final RemoteSubcategory service;
   final bool picked;
+
+  /// Opens the service. Adding is the corner button, the way a grocery row
+  /// opens the product and its plus button adds it.
   final VoidCallback onTap;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -237,23 +247,33 @@ class _ServiceTile extends StatelessWidget {
                       ),
                     ),
                     Positioned(
-                      top: 8,
-                      right: 8,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        height: 24,
-                        width: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: picked ? AppColors.green : Colors.white,
-                          border: Border.all(
-                            color: picked ? AppColors.green : AppColors.cardBorder,
-                            width: 1.5,
+                      top: 6,
+                      right: 6,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onAdd,
+                          customBorder: const CircleBorder(),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            height: 30,
+                            width: 30,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: picked ? AppColors.green : Colors.white,
+                              border: Border.all(
+                                color:
+                                    picked ? AppColors.green : AppColors.cardBorder,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              picked ? Icons.check : Icons.add,
+                              size: 17,
+                              color: picked ? Colors.white : AppColors.green,
+                            ),
                           ),
                         ),
-                        child: picked
-                            ? const Icon(Icons.check, size: 15, color: Colors.white)
-                            : null,
                       ),
                     ),
                   ],
@@ -330,11 +350,11 @@ class _ContinueBar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('$count selected',
+                Text('$count in cart',
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 const Row(
                   children: [
-                    Text('Continue',
+                    Text('View cart',
                         style: TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 15)),
                     SizedBox(width: 6),
