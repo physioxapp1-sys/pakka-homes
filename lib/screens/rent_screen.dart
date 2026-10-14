@@ -70,6 +70,18 @@ class _RentScreenState extends State<RentScreen> {
     }
   }
 
+  /// The way out of the empty state.
+  ///
+  /// The tabs are not drawn until someone owns a property or is named on a
+  /// lease, so the button that creates the first one has to live here - it is
+  /// on the Properties tab too, but nobody in this state can reach that.
+  Future<void> _addFirstProperty() async {
+    final added = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
+    );
+    if (added != null && mounted) await _load();
+  }
+
   Future<void> _signIn() async {
     final auth = AuthScope.of(context);
     final signedIn = await Navigator.of(context).push<bool>(
@@ -107,7 +119,9 @@ class _RentScreenState extends State<RentScreen> {
       );
     }
     if (home.isNeither) {
-      return _Shell(child: _NothingYet(onRefresh: _load));
+      return _Shell(
+        child: _NothingYet(onRefresh: _load, onAddProperty: _addFirstProperty),
+      );
     }
 
     final tenantSide = _asTenant && home.isTenant;
@@ -1334,10 +1348,16 @@ class _SignedOut extends StatelessWidget {
   }
 }
 
+/// Signed in, but owning nothing and renting nothing.
+///
+/// Both ways in are offered rather than described: a landlord adds their first
+/// property right here, and a renter is told the one thing they need to know -
+/// that their landlord puts them on, and it appears by itself when they do.
 class _NothingYet extends StatelessWidget {
-  const _NothingYet({required this.onRefresh});
+  const _NothingYet({required this.onRefresh, required this.onAddProperty});
 
   final Future<void> Function() onRefresh;
+  final VoidCallback onAddProperty;
 
   @override
   Widget build(BuildContext context) {
@@ -1345,24 +1365,136 @@ class _NothingYet extends StatelessWidget {
       onRefresh: onRefresh,
       color: AppColors.green,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(32, 60, 32, 24),
+        padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
         children: [
           const Icon(Icons.home_work_outlined,
-              size: 50, color: AppColors.textSecondary),
-          const SizedBox(height: 14),
+              size: 46, color: AppColors.textSecondary),
+          const SizedBox(height: 12),
           const Text(
             'Nothing here yet',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.navy),
+                fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.navy),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           const Text(
-            'This is where your properties, rent and contracts live - whether '
-            'you let a place or rent one. Call the office and we will set you up.',
+            'This is where properties, rent and contracts live - whether you '
+            'let a place or rent one.',
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 13.5, color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      height: 38,
+                      width: 38,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.tileGreen,
+                      ),
+                      child: const Icon(Icons.vpn_key_outlined,
+                          size: 19, color: AppColors.green),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text('You let a place out',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Add your first property and the rest of this section comes '
+                  'to life - who is in it, what they owe, and the contract.',
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: onAddProperty,
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    label: const Text('Add a property',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.green,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      height: 38,
+                      width: 38,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.tileBlue,
+                      ),
+                      child: const Icon(Icons.person_outline,
+                          size: 19, color: AppColors.blue),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text('You rent a place',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Your landlord adds you to the tenancy, and your rent and '
+                  'contract turn up here by themselves. Make sure they have '
+                  'the number you signed in with.',
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded, size: 17),
+                  label: const Text('Check again'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
