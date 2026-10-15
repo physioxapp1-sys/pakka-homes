@@ -38,7 +38,7 @@ class AppColors {
   /// about. Green stays for go and done, navy for structure, emergencyRed for
   /// what has actually gone wrong. Reach for one of those before adding a
   /// fourth meaning to this.
-  static const magenta = Color(0xFF961E47);
+  static const magenta = Color(0xFF931C45);
   static const accent = magenta;
   static const tileMagenta = Color(0xFFFBEAF0);
 }
