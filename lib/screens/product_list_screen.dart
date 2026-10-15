@@ -450,15 +450,18 @@ class _ProductRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.cardBorder),
           ),
           child: Row(
             children: [
-              ProductImage(product: product, size: 64),
-              const SizedBox(width: 12),
+              // Big enough to tell a tomato from an apple at arm's length.
+              // The row is as tall as this makes it - 112 against the 88 it
+              // was - which is the point: groceries are bought by looking.
+              ProductImage(product: product, size: 84),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
