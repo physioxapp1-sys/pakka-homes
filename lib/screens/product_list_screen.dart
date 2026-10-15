@@ -637,7 +637,7 @@ class _OffBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFE23744),
+        color: AppColors.accent,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -721,7 +721,7 @@ class _CartButton extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: const Color(0xFFE23744),
+                color: AppColors.accent,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(

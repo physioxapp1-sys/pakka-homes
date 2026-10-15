@@ -64,7 +64,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         padding:
                             const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE23744),
+                          color: AppColors.accent,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

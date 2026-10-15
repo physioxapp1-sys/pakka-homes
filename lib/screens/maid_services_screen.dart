@@ -94,7 +94,7 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
             icon: Badge(
               isLabelVisible: !cart.isEmpty,
               label: Text('${cart.count}'),
-              backgroundColor: const Color(0xFFE23744),
+              backgroundColor: AppColors.accent,
               child: const Icon(Icons.shopping_cart_outlined),
             ),
           ),

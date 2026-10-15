@@ -29,4 +29,16 @@ class AppColors {
   static const tileBlue = Color(0xFFE5F5FD);
 
   static const emergencyRed = Color(0xFFD9534F);
+
+  /// The logo's magenta, sampled from the sign itself.
+  ///
+  /// It marks shopping and nothing else: how many things are in a cart, and
+  /// how much is off a price. That is the logo's own subject - a trolley in a
+  /// house - so the one place the brand colour appears is the place it is
+  /// about. Green stays for go and done, navy for structure, emergencyRed for
+  /// what has actually gone wrong. Reach for one of those before adding a
+  /// fourth meaning to this.
+  static const magenta = Color(0xFF961E47);
+  static const accent = magenta;
+  static const tileMagenta = Color(0xFFFBEAF0);
 }
