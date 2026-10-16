@@ -67,7 +67,7 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
         builder: (_) => ServiceDetailScreen(
           service: service,
           categorySlug: MaidServicesScreen.categorySlug,
-          categoryName: 'Maid service',
+          categoryName: 'Househelp',
         ),
       ),
     );
@@ -88,7 +88,7 @@ class _MaidServicesScreenState extends State<MaidServicesScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
-        title: const Text('Maid service'),
+        title: const Text('Househelp'),
         actions: [
           IconButton(
             onPressed: _openCart,

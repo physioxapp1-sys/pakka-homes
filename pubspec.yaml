@@ -32,6 +32,7 @@ flutter:
     - assets/waterproofing.png
     - assets/repair.png
     - assets/home/
+    - assets/home/tiles/
 
 flutter_launcher_icons:
   android: true

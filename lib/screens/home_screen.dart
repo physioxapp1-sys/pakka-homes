@@ -24,14 +24,26 @@ class _Service {
     required this.icon,
     required this.color,
     required this.tileColor,
+    required this.art,
+    this.textOnRight = false,
     this.open,
   });
 
   final String title;
   final String subtitle;
+
+  /// Drawn only where the artwork is missing, and on the dimmed card.
   final IconData icon;
   final Color color;
   final Color tileColor;
+
+  /// The banner behind the card.
+  final String art;
+
+  /// Each banner leaves one end clear for the words. Grocery's vegetables sit
+  /// on the left, so its title goes right; the other three are the other way
+  /// round. Measured off the artwork rather than guessed.
+  final bool textOnRight;
 
   /// Null means not built yet.
   final void Function(BuildContext context)? open;
@@ -107,6 +119,8 @@ void _openMaintenance(BuildContext context) {
 const _services = <_Service>[
   _Service(
     title: 'Grocery',
+    art: 'assets/home/tiles/grocery.webp',
+    textOnRight: true,
     subtitle: 'Fresh groceries &\ndaily essentials',
     icon: Icons.shopping_basket_rounded,
     color: Color(0xFF138653),
@@ -115,6 +129,7 @@ const _services = <_Service>[
   ),
   _Service(
     title: 'Rent',
+    art: 'assets/home/tiles/rent.webp',
     subtitle: 'Homes, rooms &\nproperties for rent',
     icon: Icons.key_rounded,
     color: AppColors.orange,
@@ -122,8 +137,9 @@ const _services = <_Service>[
     open: _openRent,
   ),
   _Service(
-    title: 'Maid',
-    subtitle: 'Trusted help for\nyour home',
+    title: 'Househelp',
+    art: 'assets/home/tiles/househelp.webp',
+    subtitle: 'Cooking, cleaning &\ntrusted daily help',
     icon: Icons.cleaning_services_rounded,
     color: AppColors.purple,
     tileColor: AppColors.tilePurple,
@@ -131,6 +147,7 @@ const _services = <_Service>[
   ),
   _Service(
     title: 'Maintenance',
+    art: 'assets/home/tiles/maintenance.webp',
     subtitle: 'Plumbing, electrical,\nrepair & more',
     icon: Icons.build_rounded,
     color: AppColors.blue,
@@ -514,22 +531,20 @@ class _ServiceGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 14) / 2;
-        return Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            for (final service in _services)
-              SizedBox(
-                width: cardWidth,
-                height: cardWidth * 0.92,
-                child: _ServiceCard(service: service),
-              ),
-          ],
-        );
-      },
+    // One wide card per row rather than a two-column grid: the artwork is
+    // 2.7:1 and squaring it into a grid cell would crop away most of what it
+    // is a picture of.
+    return Column(
+      children: [
+        for (final service in _services)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: AspectRatio(
+              aspectRatio: 2.65,
+              child: _ServiceCard(service: service),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -542,16 +557,12 @@ class _ServiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = service.isActive;
-    // Greyed rather than hidden, so the range on offer is still legible while
-    // it is clear which parts can be used today.
-    final tile = active ? service.tileColor : const Color(0xFFF1F4F8);
-    final accent = active ? service.color : const Color(0xFF93A0B0);
 
     return Material(
-      color: tile,
-      borderRadius: BorderRadius.circular(24),
+      color: active ? service.tileColor : const Color(0xFFF1F4F8),
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
         onTap: () {
           if (active) {
             service.open!(context);
@@ -561,80 +572,119 @@ class _ServiceCard extends StatelessWidget {
             );
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 57,
-                    height: 57,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              service.art,
+              fit: BoxFit.cover,
+              // Dimmed rather than hidden on what is not built yet, so the
+              // range on offer stays legible while it is clear what can be
+              // used today.
+              color: active ? null : const Color(0xFFF1F4F8),
+              colorBlendMode: active ? null : BlendMode.saturation,
+              errorBuilder: (_, __, ___) => _ArtFallback(service: service),
+            ),
+            // The words need to hold their own over a photograph, so the end
+            // they sit on is washed towards the card colour.
+            Align(
+              alignment: service.textOnRight
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: 0.62,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: service.textOnRight
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      end: service.textOnRight
+                          ? Alignment.centerLeft
+                          : Alignment.centerRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.92),
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
                     ),
-                    child: Icon(service.icon, size: 31, color: accent),
                   ),
-                  const Spacer(),
-                  if (!active)
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: service.textOnRight
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    service.title,
+                    textAlign:
+                        service.textOnRight ? TextAlign.right : TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                      color: active ? AppColors.navy : const Color(0xFF6B7889),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    service.subtitle,
+                    textAlign:
+                        service.textOnRight ? TextAlign.right : TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.3,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (!active) ...[
+                    const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
                         'Coming soon',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF7A879A),
+                          color: Color(0xFF6B7889),
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
-              const Spacer(),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      service.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  if (active)
-                    Icon(Icons.chevron_right_rounded, color: accent, size: 25),
-                ],
-              ),
-              const SizedBox(height: 7),
-              Text(
-                service.subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.45,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Other tabs
-// ---------------------------------------------------------------------------
+/// Drawn if a banner ever fails to load, so a tile is still a tile.
+class _ArtFallback extends StatelessWidget {
+  const _ArtFallback({required this.service});
+
+  final _Service service;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: service.tileColor,
+      alignment: Alignment.center,
+      child: Icon(service.icon, size: 40, color: service.color),
+    );
+  }
+}
 
 class _CategoriesTab extends StatelessWidget {
   const _CategoriesTab();

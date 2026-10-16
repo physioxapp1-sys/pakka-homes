@@ -8,6 +8,7 @@ import '../data/product_models.dart';
 import '../data/product_repository.dart';
 import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
+import '../widgets/wavy_header.dart';
 import 'cart_screen.dart';
 import 'product_detail_screen.dart';
 
@@ -55,13 +56,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final _seed = DateTime.now().millisecondsSinceEpoch % 100000;
 
   List<Product>? _products;
-  List<ProductCollection> _collections = const [];
-  String? _activeCollection;
 
-  /// Only ever filled when the screen was opened on a whole section: there is
-  /// nothing to narrow when it was already opened on one aisle.
-  List<ProductAisle> _aisles = const [];
-  String? _activeAisle;
   String _search = '';
   String? _error;
   Timer? _debounce;
@@ -81,8 +76,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _load();
-    _loadCollections();
-    _loadAisles();
   }
 
   @override
@@ -146,32 +139,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
     if (position.pixels >= position.maxScrollExtent - 400) _loadMore();
   }
 
-  Future<void> _loadCollections() async {
-    try {
-      final rows = await _repository.collections(
-        subcategorySlug: widget.subcategorySlug,
-        categorySlug: widget.categorySlug,
-      );
-      if (mounted) setState(() => _collections = rows);
-    } on ApiException {
-      // Chips are an extra; the list still works without them.
-    }
-  }
-
   /// The first page. Also the reset: changing the search or the chip starts
   /// the aisle again from the top.
-  Future<void> _loadAisles() async {
-    final category = widget.categorySlug;
-    if (category == null) return;
-    try {
-      final rows = await _repository.aisles(category);
-      // One aisle is not a choice, so it is not drawn as one.
-      if (mounted && rows.length > 1) setState(() => _aisles = rows);
-    } on ApiException {
-      // Chips are an extra; the list still works without them.
-    }
-  }
-
   Future<void> _load() async {
     setState(() {
       _error = null;
@@ -179,12 +148,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
     try {
       final page = await _repository.page(
-        subcategorySlug: _activeAisle ?? widget.subcategorySlug,
+        subcategorySlug: widget.subcategorySlug,
         categorySlug: widget.categorySlug,
         pageNumber: 1,
         pageSize: _pageSize,
         seed: _seed,
-        collectionSlug: _activeCollection,
         search: _search,
       );
       if (mounted) {
@@ -213,12 +181,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
     try {
       final page = await _repository.page(
-        subcategorySlug: _activeAisle ?? widget.subcategorySlug,
+        subcategorySlug: widget.subcategorySlug,
         categorySlug: widget.categorySlug,
         pageNumber: _page + 1,
         pageSize: _pageSize,
         seed: _seed,
-        collectionSlug: _activeCollection,
         search: _search,
       );
       if (mounted) {
@@ -248,17 +215,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
   }
 
-  /// Narrowing to an aisle starts the list again from the top - the one
-  /// already loaded is the wrong list.
-  void _pickAisle(String? slug) {
-    if (_activeAisle == slug) return;
-    setState(() {
-      _activeAisle = slug;
-      _products = null;
-    });
-    _load();
-  }
-
   void _openProduct(Product product) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
@@ -271,90 +227,71 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.navy,
-        title: Text(widget.title,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 19)),
-        actions: [_CartButton(cart: cart)],
-      ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search ${widget.title.toLowerCase()}',
-                hintStyle:
-                    const TextStyle(fontSize: 14, color: Color(0xFF7D899B)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF7D899B)),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.cardBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.cardBorder),
-                ),
+          // Title, cart and search sit inside one green band rather than on a
+          // bar above a field: it is one piece of furniture, so it is drawn
+          // as one.
+          WavyHeader(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 4, 6, 0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        color: Colors.white,
+                      ),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      _CartButton(cart: cart, color: Colors.white),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search ${widget.title.toLowerCase()}',
+                        hintStyle: const TextStyle(
+                            fontSize: 14, color: Color(0xFF7D899B)),
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            color: Color(0xFF7D899B)),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          if (_aisles.isNotEmpty)
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _Chip(
-                    label: 'All',
-                    selected: _activeAisle == null,
-                    onTap: () => _pickAisle(null),
-                  ),
-                  for (final aisle in _aisles)
-                    _Chip(
-                      label: aisle.shortName,
-                      selected: _activeAisle == aisle.slug,
-                      onTap: () => _pickAisle(aisle.slug),
-                    ),
-                ],
-              ),
-            ),
-          if (_collections.isNotEmpty)
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _Chip(
-                    label: 'All',
-                    selected: _activeCollection == null,
-                    onTap: () {
-                      setState(() => _activeCollection = null);
-                      _load();
-                    },
-                  ),
-                  for (final collection in _collections)
-                    _Chip(
-                      label: collection.name,
-                      selected: _activeCollection == collection.slug,
-                      onTap: () {
-                        setState(() => _activeCollection = collection.slug);
-                        _load();
-                      },
-                    ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Expanded(child: _body(cart)),
         ],
       ),
@@ -467,35 +404,6 @@ class _ListFooter extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Center(child: child),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        showCheckmark: false,
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.green,
-        side: const BorderSide(color: AppColors.cardBorder),
-        labelStyle: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : AppColors.navy,
-        ),
-      ),
     );
   }
 }
@@ -769,9 +677,12 @@ class ProductImage extends StatelessWidget {
 }
 
 class _CartButton extends StatelessWidget {
-  const _CartButton({required this.cart});
+  const _CartButton({required this.cart, this.color});
 
   final Cart cart;
+
+  /// White on the green band, the default navy elsewhere.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -780,6 +691,7 @@ class _CartButton extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.shopping_cart_outlined),
+          color: color,
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const CartScreen()),
           ),
