@@ -8,6 +8,7 @@ class RemoteCategory {
     required this.slug,
     required this.imageKey,
     required this.subcategoryCount,
+    this.artworkHasLabel = false,
     this.description = '',
     this.imageUrl,
     this.icon = '',
@@ -22,6 +23,10 @@ class RemoteCategory {
   /// Bundled asset folder this category maps to; empty when unset server-side.
   final String imageKey;
   final int subcategoryCount;
+
+  /// True where the tile pictures already have the service name printed in
+  /// them. The grid must not caption them as well, or the name appears twice.
+  final bool artworkHasLabel;
   final String description;
   final String? imageUrl;
   final String icon;
@@ -36,6 +41,7 @@ class RemoteCategory {
         slug: json['slug'] as String? ?? '',
         imageKey: json['image_key'] as String? ?? '',
         subcategoryCount: json['subcategory_count'] as int? ?? 0,
+        artworkHasLabel: json['artwork_has_label'] as bool? ?? false,
         description: json['description'] as String? ?? '',
         imageUrl: json['image'] as String?,
         icon: json['icon'] as String? ?? '',

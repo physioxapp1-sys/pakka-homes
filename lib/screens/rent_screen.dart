@@ -5,6 +5,7 @@ import '../data/auth_scope.dart';
 import '../data/product_models.dart' show formatNpr;
 import '../data/rent_models.dart';
 import '../data/rent_repository.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 import 'auth_screen.dart';
 import 'rent_buildings_screen.dart';
@@ -939,10 +940,9 @@ class _PropertyCard extends StatelessWidget {
             SizedBox(
               height: 140,
               width: double.infinity,
-              child: Image.network(
-                property.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+              child: RemoteImage(
+                url: property.imageUrl,
+                fallback: Container(
                   color: AppColors.tileBlue,
                   child: const Icon(Icons.home_rounded,
                       size: 40, color: AppColors.blue),

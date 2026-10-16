@@ -6,6 +6,7 @@ import '../data/api_client.dart';
 import '../data/cart.dart';
 import '../data/product_models.dart';
 import '../data/product_repository.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 import 'cart_screen.dart';
 import 'product_detail_screen.dart';
@@ -687,15 +688,14 @@ class ProductImage extends StatelessWidget {
           size: size * 0.45, color: AppColors.green),
     );
 
-    if (product.imageUrl == null) return fallback;
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: Image.network(
-        product.imageUrl!,
+      child: RemoteImage(
+        url: product.imageUrl,
         width: size,
         height: size,
         fit: fit,
-        errorBuilder: (_, __, ___) => fallback,
+        fallback: fallback,
       ),
     );
   }

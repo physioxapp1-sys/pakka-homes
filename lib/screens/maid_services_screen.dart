@@ -4,6 +4,7 @@ import '../data/api_client.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
 import '../data/service_cart.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 import 'service_cart_screen.dart';
 import 'service_detail_screen.dart';
@@ -315,14 +316,7 @@ class _Photo extends StatelessWidget {
             size: 30, color: AppColors.purple),
       ),
     );
-    if (url == null || url!.isEmpty) return placeholder;
-    return Image.network(
-      url!,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => placeholder,
-      loadingBuilder: (context, child, progress) =>
-          progress == null ? child : Container(color: const Color(0xFFF1F6FA)),
-    );
+    return RemoteImage(url: url, fallback: placeholder);
   }
 }
 

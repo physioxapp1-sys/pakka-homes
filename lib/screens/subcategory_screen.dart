@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 import 'booking_screen.dart';
 import 'product_list_screen.dart';
@@ -45,6 +46,11 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
   List<RemoteSubcategory>? _rows;
   String? _error;
 
+  /// Whether this category's pictures already carry the service name. Until
+  /// the categories load it stays false, which only risks a caption that is
+  /// briefly doubled rather than a tile with no name at all.
+  bool _artworkHasLabel = false;
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +71,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
         categorySlug: widget.categorySlug,
       );
       if (mounted) setState(() => _rows = rows);
+      await _loadCategoryFlags();
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
@@ -72,6 +79,20 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
           _error = e.message;
         });
       }
+    }
+  }
+
+  /// The artwork for most service categories has the name printed into the
+  /// picture, so the tile would otherwise say it twice.
+  Future<void> _loadCategoryFlags() async {
+    try {
+      final categories = await _repository.categories(widget.vertical);
+      final mine = categories.where((c) => c.slug == widget.categorySlug);
+      if (mounted && mine.isNotEmpty) {
+        setState(() => _artworkHasLabel = mine.first.artworkHasLabel);
+      }
+    } on ApiException {
+      // Caption it, which is the safer of the two mistakes.
     }
   }
 
@@ -126,16 +147,27 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
           childAspectRatio: 0.95,
         ),
         itemCount: rows.length,
-        itemBuilder: (_, i) => _Tile(row: rows[i], onTap: () => _open(rows[i])),
+        itemBuilder: (_, i) => _Tile(
+          row: rows[i],
+          showName: !_artworkHasLabel,
+          onTap: () => _open(rows[i]),
+        ),
       ),
     );
   }
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.row, required this.onTap});
+  const _Tile({
+    required this.row,
+    required this.showName,
+    required this.onTap,
+  });
 
   final RemoteSubcategory row;
+
+  /// False where the picture already says the name.
+  final bool showName;
   final VoidCallback onTap;
 
   @override
@@ -154,20 +186,21 @@ class _Tile extends StatelessWidget {
                   child: _TileImage(url: row.imageUrl),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
-                child: Text(
-                  row.name,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+              if (showName)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 2),
+                  child: Text(
+                    row.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 child: Text(
@@ -209,20 +242,7 @@ class _TileImage extends StatelessWidget {
       ),
     );
 
-    if (url == null || url!.isEmpty) return placeholder;
-    return Image.network(
-      url!,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => placeholder,
-      loadingBuilder: (context, child, progress) => progress == null
-          ? child
-          : Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F6FA),
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-    );
+    return RemoteImage(url: url, fit: BoxFit.contain, fallback: placeholder);
   }
 }
 

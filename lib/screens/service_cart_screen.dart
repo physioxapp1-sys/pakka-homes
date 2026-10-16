@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/service_cart.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 import 'booking_screen.dart';
 
@@ -154,9 +155,7 @@ class _Thumb extends StatelessWidget {
       child: const Icon(Icons.cleaning_services_rounded,
           size: 22, color: AppColors.purple),
     );
-    if (url == null || url!.isEmpty) return placeholder;
-    return Image.network(url!,
-        fit: BoxFit.cover, errorBuilder: (_, __, ___) => placeholder);
+    return RemoteImage(url: url, fallback: placeholder);
   }
 }
 

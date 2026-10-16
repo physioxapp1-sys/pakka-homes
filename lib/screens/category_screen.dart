@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/catalog_models.dart';
 import '../data/catalog_repository.dart';
+import '../widgets/remote_image.dart';
 import '../theme/app_colors.dart';
 
 /// A grouping of categories - Maintenance fanning out to the trades under it.
@@ -225,13 +226,6 @@ class _Art extends StatelessWidget {
       color: iconColor.withValues(alpha: 0.10),
       child: Center(child: Icon(icon, color: iconColor, size: 26)),
     );
-    if (url == null || url!.isEmpty) return fallback;
-    return Image.network(
-      url!,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => fallback,
-      loadingBuilder: (context, child, progress) =>
-          progress == null ? child : Container(color: const Color(0xFFF1F6FA)),
-    );
+    return RemoteImage(url: url, fallback: fallback);
   }
 }
