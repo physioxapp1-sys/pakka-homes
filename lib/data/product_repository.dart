@@ -31,15 +31,19 @@ class ProductRepository {
   /// sent with every page: the server orders deterministically from it, so
   /// page 2 continues page 1 instead of re-rolling and repeating products.
   Future<ProductPage> page({
-    required String subcategorySlug,
+    String? subcategorySlug,
+    String? categorySlug,
     required int pageNumber,
     int pageSize = 10,
     int? seed,
     String? collectionSlug,
     String? search,
   }) async {
+    assert(subcategorySlug != null || categorySlug != null,
+        'Ask for one aisle or one whole section');
     final body = await _api.get('/products/', query: {
-      'subcategory': subcategorySlug,
+      if (subcategorySlug != null) 'subcategory': subcategorySlug,
+      if (categorySlug != null) 'category': categorySlug,
       'page_size': '$pageSize',
       if (pageNumber > 1) 'page': '$pageNumber',
       if (seed != null) 'seed': '$seed',
@@ -81,9 +85,14 @@ class ProductRepository {
     return rows.map(Product.fromJson).toList();
   }
 
-  Future<List<ProductCollection>> collections(String subcategorySlug) async {
+  /// The filter chips, for one aisle or for a whole section.
+  Future<List<ProductCollection>> collections({
+    String? subcategorySlug,
+    String? categorySlug,
+  }) async {
     final body = await _api.get('/products/collections/', query: {
-      'subcategory': subcategorySlug,
+      if (subcategorySlug != null) 'subcategory': subcategorySlug,
+      if (categorySlug != null) 'category': categorySlug,
     });
     final rows = body is List ? body : const [];
     return rows

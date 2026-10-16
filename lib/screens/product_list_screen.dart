@@ -11,16 +11,28 @@ import '../theme/app_colors.dart';
 import 'cart_screen.dart';
 import 'product_detail_screen.dart';
 
-/// One grocery aisle: search, filter chips, and a row per product.
+/// What is for sale: search, filter chips, and a row per product.
+///
+/// Opened on a whole section - Grocery is everything it sells, in one list -
+/// or on a single aisle. Grouping the thirteen things a grocery sells behind
+/// four tiles meant two taps to reach a tomato and a screen that said nothing
+/// the next one did not.
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({
     super.key,
     required this.title,
-    required this.subcategorySlug,
-  });
+    this.subcategorySlug,
+    this.categorySlug,
+  }) : assert(subcategorySlug != null || categorySlug != null,
+            'Open on one aisle or one whole section');
 
   final String title;
-  final String subcategorySlug;
+
+  /// One aisle, or null for the whole section.
+  final String? subcategorySlug;
+
+  /// A whole section, or null when opened on one aisle.
+  final String? categorySlug;
 
   @override
   State<ProductListScreen> createState() => _ProductListScreenState();
@@ -130,7 +142,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   Future<void> _loadCollections() async {
     try {
-      final rows = await _repository.collections(widget.subcategorySlug);
+      final rows = await _repository.collections(
+        subcategorySlug: widget.subcategorySlug,
+        categorySlug: widget.categorySlug,
+      );
       if (mounted) setState(() => _collections = rows);
     } on ApiException {
       // Chips are an extra; the list still works without them.
@@ -147,6 +162,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     try {
       final page = await _repository.page(
         subcategorySlug: widget.subcategorySlug,
+        categorySlug: widget.categorySlug,
         pageNumber: 1,
         pageSize: _pageSize,
         seed: _seed,
@@ -180,6 +196,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     try {
       final page = await _repository.page(
         subcategorySlug: widget.subcategorySlug,
+        categorySlug: widget.categorySlug,
         pageNumber: _page + 1,
         pageSize: _pageSize,
         seed: _seed,

@@ -9,6 +9,7 @@ import 'account_screen.dart';
 import 'auth_screen.dart';
 import 'category_screen.dart';
 import 'maid_services_screen.dart';
+import 'product_list_screen.dart';
 import 'my_orders_screen.dart';
 import 'rent_screen.dart';
 import 'subcategory_screen.dart';
@@ -138,7 +139,19 @@ const _services = <_Service>[
   ),
 ];
 
-void _openGrocery(BuildContext context) => _openCategory(context, 'grocery');
+/// Straight to what is for sale. Grocery used to open on four aisle tiles -
+/// Vegetables, Rice, Dairy, Gas - which was a tap and a screen between
+/// someone and a tomato, for a shop with thirteen things in it.
+void _openGrocery(BuildContext context) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => const ProductListScreen(
+        title: 'Grocery',
+        categorySlug: 'grocery',
+      ),
+    ),
+  );
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
