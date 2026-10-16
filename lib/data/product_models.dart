@@ -95,6 +95,40 @@ class ProductCollection {
       );
 }
 
+/// One aisle of a section, and how much is in it.
+///
+/// Comes from the products rather than the catalog, so an aisle somebody
+/// created and never stocked is not offered as a chip that leads nowhere.
+class ProductAisle {
+  const ProductAisle({
+    required this.name,
+    required this.slug,
+    required this.count,
+  });
+
+  final String name;
+  final String slug;
+  final int count;
+
+  /// A chip is narrow, and a row of chips is only useful while you can see
+  /// all of them at once. "Vegetables & Fruits" becomes "Vegetables", so the
+  /// four grocery aisles fit a phone without scrolling. A name with nothing
+  /// to cut at is left whole.
+  String get shortName {
+    for (final separator in const [' & ', ' / ', ', ']) {
+      final cut = name.indexOf(separator);
+      if (cut > 2) return name.substring(0, cut);
+    }
+    return name;
+  }
+
+  factory ProductAisle.fromJson(Map<String, dynamic> json) => ProductAisle(
+        name: json['name'] as String? ?? '',
+        slug: json['slug'] as String? ?? '',
+        count: json['count'] as int? ?? 0,
+      );
+}
+
 /// Formats an amount the way the designs do: NPR 60, never NPR 60.00.
 String formatNpr(double amount) {
   final whole = amount.round();

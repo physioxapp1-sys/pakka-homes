@@ -57,6 +57,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<Product>? _products;
   List<ProductCollection> _collections = const [];
   String? _activeCollection;
+
+  /// Only ever filled when the screen was opened on a whole section: there is
+  /// nothing to narrow when it was already opened on one aisle.
+  List<ProductAisle> _aisles = const [];
+  String? _activeAisle;
   String _search = '';
   String? _error;
   Timer? _debounce;
@@ -77,6 +82,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _scrollController.addListener(_onScroll);
     _load();
     _loadCollections();
+    _loadAisles();
   }
 
   @override
@@ -154,6 +160,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   /// The first page. Also the reset: changing the search or the chip starts
   /// the aisle again from the top.
+  Future<void> _loadAisles() async {
+    final category = widget.categorySlug;
+    if (category == null) return;
+    try {
+      final rows = await _repository.aisles(category);
+      // One aisle is not a choice, so it is not drawn as one.
+      if (mounted && rows.length > 1) setState(() => _aisles = rows);
+    } on ApiException {
+      // Chips are an extra; the list still works without them.
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _error = null;
@@ -161,7 +179,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
     try {
       final page = await _repository.page(
-        subcategorySlug: widget.subcategorySlug,
+        subcategorySlug: _activeAisle ?? widget.subcategorySlug,
         categorySlug: widget.categorySlug,
         pageNumber: 1,
         pageSize: _pageSize,
@@ -195,7 +213,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     });
     try {
       final page = await _repository.page(
-        subcategorySlug: widget.subcategorySlug,
+        subcategorySlug: _activeAisle ?? widget.subcategorySlug,
         categorySlug: widget.categorySlug,
         pageNumber: _page + 1,
         pageSize: _pageSize,
@@ -228,6 +246,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
       setState(() => _search = value.trim());
       _load();
     });
+  }
+
+  /// Narrowing to an aisle starts the list again from the top - the one
+  /// already loaded is the wrong list.
+  void _pickAisle(String? slug) {
+    if (_activeAisle == slug) return;
+    setState(() {
+      _activeAisle = slug;
+      _products = null;
+    });
+    _load();
   }
 
   void _openProduct(Product product) {
@@ -277,6 +306,27 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
           ),
+          if (_aisles.isNotEmpty)
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _Chip(
+                    label: 'All',
+                    selected: _activeAisle == null,
+                    onTap: () => _pickAisle(null),
+                  ),
+                  for (final aisle in _aisles)
+                    _Chip(
+                      label: aisle.shortName,
+                      selected: _activeAisle == aisle.slug,
+                      onTap: () => _pickAisle(aisle.slug),
+                    ),
+                ],
+              ),
+            ),
           if (_collections.isNotEmpty)
             SizedBox(
               height: 44,

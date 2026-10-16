@@ -85,6 +85,16 @@ class ProductRepository {
     return rows.map(Product.fromJson).toList();
   }
 
+  /// The aisles of a section that have something in them.
+  Future<List<ProductAisle>> aisles(String categorySlug) async {
+    final body = await _api.get('/products/aisles/',
+        query: {'category': categorySlug});
+    final rows = body is List ? body : const [];
+    return rows
+        .map((e) => ProductAisle.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// The filter chips, for one aisle or for a whole section.
   Future<List<ProductCollection>> collections({
     String? subcategorySlug,
