@@ -248,9 +248,7 @@ class _HomeTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Header(),
-          const SizedBox(height: 25),
-          const _SearchBar(),
-          const SizedBox(height: 25),
+          const SizedBox(height: 18),
           const _Banner(),
           const SizedBox(height: 30),
           Row(
@@ -294,6 +292,8 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
 
+    // The mark and the way in to an account. The name and the tagline used to
+    // sit between them, saying what the four tiles below already show.
     return Row(
       children: [
         Image.asset(
@@ -312,40 +312,13 @@ class _Header extends StatelessWidget {
                 size: 36, color: Color(0xFF603719)),
           ),
         ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Pakka ',
-                      style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.w800),
-                    ),
-                    TextSpan(
-                      text: 'Homes',
-                      style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-                maxLines: 1,
-                style: TextStyle(fontSize: 23),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'All in One Home Solution',
-                style: TextStyle(fontSize: 12, color: Color(0xFF525C69)),
-              ),
-            ],
-          ),
-        ),
+        const Spacer(),
         InkWell(
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) =>
-                  auth.isSignedIn ? AccountScreen(auth: auth) : AuthScreen(auth: auth),
+              builder: (_) => auth.isSignedIn
+                  ? AccountScreen(auth: auth)
+                  : AuthScreen(auth: auth),
             ),
           ),
           borderRadius: BorderRadius.circular(30),
@@ -353,71 +326,15 @@ class _Header extends StatelessWidget {
             radius: 23,
             backgroundColor: const Color(0xFFE4F0FF),
             child: Icon(
-              auth.isSignedIn ? Icons.person_rounded : Icons.person_outline_rounded,
+              auth.isSignedIn
+                  ? Icons.person_rounded
+                  : Icons.person_outline_rounded,
               color: AppColors.navy,
               size: 29,
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SearchBar extends StatelessWidget {
-  const _SearchBar();
-
-  @override
-  Widget build(BuildContext context) {
-    void soon(String what) => ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$what is coming soon')));
-
-    return Container(
-      height: 62,
-      padding: const EdgeInsets.only(left: 15, right: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(36),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search_rounded, size: 31, color: AppColors.navy),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              textInputAction: TextInputAction.search,
-              // The backend supports /subcategories/?search=, but there is no
-              // results screen yet, so this says so rather than pretending.
-              onSubmitted: (_) => soon('Search'),
-              decoration: const InputDecoration(
-                hintText: 'Search services, products...',
-                hintStyle: TextStyle(fontSize: 14, color: Color(0xFF7D899B)),
-                border: InputBorder.none,
-                isCollapsed: true,
-              ),
-            ),
-          ),
-          Material(
-            color: const Color(0xFFE4F2FF),
-            borderRadius: BorderRadius.circular(30),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(30),
-              onTap: () => soon('Scan'),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_alt_rounded, color: AppColors.blue, size: 21),
-                    Text('Scan', style: TextStyle(fontSize: 11, color: AppColors.blue)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -443,7 +360,7 @@ class _Banner extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Image.asset(
-                'assets/home/hero.jpg',
+                'assets/home/hero.webp',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   decoration: const BoxDecoration(
