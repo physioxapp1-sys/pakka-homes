@@ -191,36 +191,112 @@ connection, only `pymysql.install_as_MySQLdb()`.
 
 ## Deploying
 
+### Getting a terminal
+
+cPanel → **Terminal**. (Or SSH, if the host has it enabled - same commands.)
+
+Everything below assumes this, once per session:
+
 ```bash
 cd ~/dhaubanjar-nirman-sewa
-git pull
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py migrate
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_catalog
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_catalog_images
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py seed_products
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py import_product_images
-~/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python manage.py seed_providers
-touch tmp/restart.txt      # Passenger reloads on mtime change
+PY=/home2/madhyapu/virtualenv/dhaubanjar-nirman-sewa/3.11/bin/python
 ```
 
-All of these are safe to re-run: they update what changed and leave the rest
-alone. The two image commands skip anything that already has a picture unless
-passed `--replace`.
+**Call that python by full path.** Do not `source activate` - the prompt lies
+about which environment is live more often than it tells the truth, and the
+two failures it causes (`Unknown command: 'import_catalog'` and
+`ModuleNotFoundError: dotenv`) both look like broken code rather than the
+wrong interpreter. See the entry above.
 
-`import_catalog_images` is not optional any more. The app no longer ships tile
-images — it draws whatever the API serves — so until this has run, every
-subcategory tile shows a placeholder.
+### Every deploy
 
-`import_catalog` needs no path: it defaults to `catalog/data/catalog.xlsx`,
-vendored in the backend repo. That copy is **not** the app's spreadsheet — when
-`pakka-homes/xlsx/data - Copy.xlsx` changes, copy it over and commit, or the
-import will quietly load the old catalog.
+```bash
+git pull
+$PY manage.py collectstatic --noinput
+$PY manage.py migrate --noinput
+mkdir -p tmp && touch tmp/restart.txt
+```
 
-Expect **39 categories / 348 items**. If `categories/?vertical=service` returns
-`count: 0`, the import never ran and every screen is on bundled images with no
-prices.
+Four commands, in that order, every time.
 
----
+**collectstatic is not optional.** Static filenames are content-hashed, so
+skipping it leaves the manifest pointing at files that no longer exist and the
+whole site 500s - not just the page you changed.
+
+**`touch tmp/restart.txt` is what reloads the app.** Passenger watches that
+file's mtime; without it the old code keeps serving and the deploy looks like
+it did nothing. cPanel → **Setup Python App** → **Restart** does the same
+thing if you prefer the button.
+
+### After a change to the catalog or its pictures
+
+These are data, not code, so they are not part of every deploy. Run the ones
+that apply:
+
+```bash
+$PY manage.py import_catalog                    # the spreadsheet changed
+$PY manage.py import_catalog_images --replace   # tile or category pictures changed
+$PY manage.py seed_products                     # the product list changed
+$PY manage.py import_product_images --replace   # product photos changed
+$PY manage.py seed_providers                    # the provider list changed
+```
+
+**Order matters for the images**: `import_catalog` first, or the pictures have
+no rows to attach to and are silently skipped.
+
+**`--replace` matters too.** Without it both image commands leave anything
+that already has a picture alone, so edited or recompressed images do not
+reach the server and nothing appears to change.
+
+All of them are safe to re-run: they update what changed and leave the rest.
+
+### Once a month, for Rent
+
+```bash
+$PY manage.py raise_rent
+```
+
+This creates the month's rent row for every active tenancy, and "unpaid" is
+what the whole Rent section is made of - the overdue count, the next due date,
+the owner's expected total. Without it the dashboard quietly stops moving.
+Safe to run twice; a unique constraint stops anyone being double-billed.
+
+### Checking it worked
+
+```bash
+B=https://www.dhaubanjarnirmansewa.com.np
+UA="PakkaHomes/1.0 (Android)"
+curl -s -A "$UA" "$B/api/v1/health/"                       # {"status": "ok", "database": true}
+curl -s -A "$UA" "$B/api/v1/categories/?vertical=service" | head -c 200
+```
+
+JSON means the deploy landed. `<!DOCTYPE html>` means something in front of
+Django answered instead - see the bot filter entry at the top.
+
+### What is NOT deployed this way
+
+The **Flutter app** is built by Codemagic from the `pakka-homes` repo. Pushing
+there and deploying here are separate acts, and the order matters whenever the
+app needs something the server does not have yet: **deploy the backend first**,
+or the new screens open empty.
+
+### The vendored catalog spreadsheet
+
+`import_catalog` reads `catalog/data/catalog.xlsx` inside this repo, not the
+app's copy. When `pakka-homes/xlsx/data - Copy.xlsx` changes, copy it over and
+commit it, or the import quietly loads the old catalog.
+
+### deploy.sh
+
+There is a `deploy.sh` that does collectstatic, migrate and restart in one go,
+and can be hooked to `git pull`. Its default venv path assumes the repo lives
+under `~/repositories/`, which on this account it does not - so pass the real
+one:
+
+```bash
+VENV_PY=$PY ./deploy.sh
+```
+
 
 ## Testing the backend without touching production
 
